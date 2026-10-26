@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HEAVY TRUCK INTERCEPTOR: CRASH PURSUIT</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- 3D WebGL Canvas コンテナ -->
+  <div id="game-canvas-container"></div>
+  <div class="scanlines"></div>
+
+  <!-- トップバー -->
+  <div id="top-bar" class="ui-panel">
+    <div style="display: flex; align-items: baseline;">
+      <div class="logo-text">HEAVY TRUCK INTERCEPTOR</div>
+      <div class="sub-tag">TACTICAL HEAVY IMPACT PURSUIT</div>
+      <div id="hud-version-tag" class="sub-tag" style="color: var(--neon-cyan); font-weight: bold;">v1.0.0</div>
+    </div>
+    <div class="top-actions">
+      <div id="hud-fps" style="font-family: monospace; font-size: 13px; color: #8fa0b5;">60 FPS</div>
+      <button id="btn-toggle-ultra" class="cyber-btn" title="超リアル演算モードの切り替え (Uキー)">
+        PHYSICS: <span id="hud-physics-mode" style="color: #00f0ff;">NORMAL 60FPS</span>
+      </button>
+      <button id="btn-check-update" class="cyber-btn" style="border-color: var(--neon-yellow); color: var(--neon-yellow);">
+        📡 CHECK UPDATES
+      </button>
+      <button id="btn-audio-toggle" class="cyber-btn">🔊 AUDIO</button>
+    </div>
+  </div>
+
+  <!-- メニュー・セレクト画面 -->
+  <div id="menu-screen" class="ui-panel">
+    <div class="menu-title">SELECT MISSION & INTERCEPTOR</div>
+
+    <!-- 1. 捜査車両選択 -->
+    <div class="selection-section">
+      <div class="section-label">1. SELECT YOUR INTERCEPT VEHICLE (捜査側車両)</div>
+      <div class="card-grid" id="vehicle-selector">
+        <div class="select-card selected" data-value="patrol">
+          <div class="card-title">🚓 PATROL CROWN</div>
+          <div class="card-desc">最高速250km/h。高機動セダン。EMP電磁衝撃波キャノン搭載で遠隔システム破壊が可能。</div>
+        </div>
+        <div class="select-card" data-value="supercar">
+          <div class="card-title">🏎️ V12 PHANTOM</div>
+          <div class="card-desc">最高速330km/h。ツインターボニトロ過給。超高速でトラックの側面に回り込み急襲する。</div>
+        </div>
+        <div class="select-card" data-value="suv">
+          <div class="card-title">🚙 TITAN HEAVY 4x4</div>
+          <div class="card-desc">重量3.4t。全面アイアンブルバー装備。超高耐衝撃ボディでトラックを押し返す。</div>
+        </div>
+        <div class="select-card" data-value="rhino">
+          <div class="card-title">🦏 RHINO JUGGERNAUT</div>
+          <div class="card-desc">重量6.5tの怪物突破機。前面V字排土板で18輪トラックの車軸を一撃で叩き折る。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 標的暴走大型車両選択 -->
+    <div class="selection-section">
+      <div class="section-label">2. SELECT RAMPAGING TARGET (標的暴走大型車両)</div>
+      <div class="card-grid" id="target-selector">
+        <div class="select-card selected" data-value="truck">
+          <div class="card-title">🚛 18-WHEELER MEGA HAULER</div>
+          <div class="card-desc">18輪連結メガトラック。時速135kmで暴走中。部位破壊：ラジエーター、燃料タンク、18輪タイヤ。</div>
+        </div>
+        <div class="select-card" data-value="bus">
+          <div class="card-title">🚌 TWIN-DECK WILD BUS</div>
+          <div class="card-desc">2階建て長距離特急バス。時速155kmの高速蛇行運転。高重心のため側面タックルで大横転！</div>
+        </div>
+        <div class="select-card" data-value="crusher">
+          <div class="card-title">🚜 ARMORED MEGA-CRUSHER</div>
+          <div class="card-desc">違法重装甲ブルドーザー。HP1500の超高耐久ビースト。一般車を薙ぎ払う最凶の標的。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. マップ選択 -->
+    <div class="selection-section">
+      <div class="section-label">3. SELECT ENVIRONMENT (走行マップ)</div>
+      <div class="card-grid" id="map-selector">
+        <div class="select-card selected" data-value="megacity">
+          <div class="card-title">🏙️ DOWNTOWN MEGACITY</div>
+          <div class="card-desc">摩天楼が連なる大都市。ネオンサイン、街灯、交通バリケードが激突で破壊可能。</div>
+        </div>
+        <div class="select-card" data-value="highway">
+          <div class="card-title">🌊 COASTAL HIGHWAY</div>
+          <div class="card-desc">8車線の長大沿岸ハイウェイ。海と山岳トンネルを抜ける超高速チェイスコース。</div>
+        </div>
+        <div class="select-card" data-value="desert">
+          <div class="card-title">🏜️ DESERT BADLANDS</div>
+          <div class="card-desc">赤土のキャニオンと工業コンテナ地帯。連続カーブのダイナミックコース。</div>
+        </div>
+        <div class="select-card" data-value="rainstorm">
+          <div class="card-title">⛈️ RAINSTORM CYBERWAY</div>
+          <div class="card-desc">夜間の暴風雨と稲妻。濡れた路面のリアルタイム水たまり反射と激しい水煙。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="start-btn-wrap">
+      <button id="btn-deploy" class="cyber-btn start-btn">DEPLOY INTERCEPTOR (緊急出動)</button>
+    </div>
+  </div>
+
+  <!-- ゲームプレイ中 HUD -->
+  <div id="hud-overlay">
+    <!-- ターゲットHPバー -->
+    <div class="target-hud-box">
+      <div class="target-header">
+        <span id="hud-target-name">RAMPAGING 18-WHEELER MEGA HAULER</span>
+        <span>HP: <span id="hud-target-hp">1000 / 1000</span></span>
+      </div>
+      <div class="gauge-bar-outer">
+        <div id="hud-target-hp-bar" class="gauge-bar-inner"></div>
+      </div>
+    </div>
+
+    <!-- 中央アナウンス & スコア -->
+    <div id="hud-announcement">INTERCEPTOR DISPATCHED: RAM TARGET TO HALT!</div>
+    <div id="hud-impact-score">+250 IMPACT PTS</div>
+
+    <!-- プレイヤー計器 -->
+    <div class="player-hud-box">
+      <div class="speedometer">
+        <div id="hud-speed" class="speed-value">0</div>
+        <div class="speed-unit">KM/H</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label-wrap">
+          <span>CHASSIS INTEGRITY</span>
+          <span id="hud-player-hp">100 / 100</span>
+        </div>
+        <div class="gauge-bar-outer" style="height: 10px;">
+          <div id="hud-player-hp-bar" class="gauge-bar-inner player-hp-bar"></div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label-wrap">
+          <span>RAM NITRO / OVERBOOST</span>
+          <span>SHIFT KEY</span>
+        </div>
+        <div class="gauge-bar-outer" style="height: 8px;">
+          <div id="hud-nitro-bar" class="gauge-bar-inner nitro-bar"></div>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: space-between; font-size: 11px; color: #8fa0b5; margin-top: 6px;">
+        <span>TARGET DISTANCE: <strong id="hud-distance" style="color: var(--neon-cyan);">80m</strong></span>
+        <span>ABILITY: <strong style="color: var(--neon-yellow);">[E] KEY</strong></span>
+      </div>
+    </div>
+
+    <!-- 操作ガイド -->
+    <div class="controls-hud-box">
+      <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> : 運転ステアリング</div>
+      <div style="margin-top: 4px;"><kbd>Shift</kbd> : ニトロ急加速 / 特攻突進</div>
+      <div style="margin-top: 4px;"><kbd>Space</kbd> : ハンドブレーキ・緊急ドリフト</div>
+      <div style="margin-top: 4px;"><kbd>E</kbd> : 車両特殊能力 (EMP/過給)</div>
+      <div style="margin-top: 4px;"><kbd>C</kbd> : カメラ視点切替 (後方/車内/バンパー)</div>
+      <div style="margin-top: 4px;"><kbd>U</kbd> : 超演算 ULTRA PC-MELTING 物理</div>
+      <div style="margin-top: 4px;"><kbd>R</kbd> : 車両姿勢リセット</div>
+    </div>
+  </div>
+
+  <!-- リザルト画面 -->
+  <div id="result-screen" class="ui-panel hidden">
+    <div id="result-title" class="result-title">MISSION ACCOMPLISHED</div>
+    <div id="result-score" class="result-score">TOTAL SCORE: 12500 PTS</div>
+    <div id="result-desc" style="font-size: 14px; color: #a0aec0; line-height: 1.5;"></div>
+    <div style="display: flex; justify-content: center; gap: 15px; margin-top: 15px;">
+      <button id="btn-retry" class="cyber-btn start-btn" style="font-size: 14px; padding: 10px 30px;">PLAY AGAIN</button>
+      <button id="btn-back-menu" class="cyber-btn" style="font-size: 14px; padding: 10px 30px;">MISSION SELECT</button>
+    </div>
+  </div>
+
+  <!-- アプリ内アップデーターモーダル（3秒スキャン＆かっこいいアニメーション） -->
+  <div id="updater-modal" class="ui-panel hidden">
+    <div class="modal-header">
+      <div class="modal-title">🛰️ SATELLITE FIRMWARE TELEMETRY & AUTO-UPDATER</div>
+      <button id="updater-close-btn" class="cyber-btn danger" style="padding: 4px 10px;">✕</button>
+    </div>
+
+    <!-- サイバーレーダースキャン演出 -->
+    <div class="radar-anim-wrap">
+      <div class="radar-circle">
+        <div class="radar-sweep"></div>
+      </div>
+    </div>
+
+    <div id="updater-status" class="updater-status-text">INITIALIZING SECURE QUANTUM LINK...</div>
+
+    <div class="gauge-bar-outer" style="height: 16px;">
+      <div id="updater-progress-fill" class="gauge-bar-inner player-hp-bar" style="width: 0%;"></div>
+    </div>
+    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--neon-cyan);">
+      <span>REPOSITORIES: youyouboydragonOfficial/heavy-truck-interceptor</span>
+      <span id="updater-percent">0%</span>
+    </div>
+
+    <!-- リアルタイム暗号化コンソールログ -->
+    <div id="updater-console" class="updater-console"></div>
+
+    <div class="modal-actions">
+      <button id="updater-action-btn" class="cyber-btn" style="display: none;">DOWNLOAD & INSTALL UPDATE</button>
+    </div>
+  </div>
+
+  <!-- メインスクリプト -->
+  <script type="module">
+    import { Game } from './js/engine/game.js';
+    import { InAppUpdater } from './js/engine/updater.js';
+    import { soundEngine } from './js/engine/audio.js';
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const game = new Game();
+      const updater = new InAppUpdater();
+
+      // カードセレクト処理ヘルパー
+      function bindSelector(containerId) {
+        const container = document.getElementById(containerId);
+        container.querySelectorAll('.select-card').forEach(card => {
+          card.addEventListener('click', () => {
+            container.querySelectorAll('.select-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+          });
+        });
+      }
+
+      bindSelector('vehicle-selector');
+      bindSelector('target-selector');
+      bindSelector('map-selector');
+
+      function getSelectedValue(containerId) {
+        const card = document.querySelector(`#${containerId} .select-card.selected`);
+        return card ? card.getAttribute('data-value') : null;
+      }
+
+      // 出動ボタン
+      document.getElementById('btn-deploy').addEventListener('click', () => {
+        const v = getSelectedValue('vehicle-selector') || 'patrol';
+        const t = getSelectedValue('target-selector') || 'truck';
+        const m = getSelectedValue('map-selector') || 'megacity';
+
+        document.getElementById('menu-screen').style.display = 'none';
+        document.getElementById('hud-overlay').classList.add('active');
+
+        game.startGame(v, m, t);
+      });
+
+      // アップデートチェックボタン（3秒演出発動）
+      document.getElementById('btn-check-update').addEventListener('click', () => {
+        updater.checkForUpdates();
+      });
+
+      // Ultra物理切り替えボタン
+      document.getElementById('btn-toggle-ultra').addEventListener('click', () => {
+        game.toggleUltraPhysics();
+      });
+
+      // オーディオミュート切り替え
+      let isMuted = false;
+      const audioBtn = document.getElementById('btn-audio-toggle');
+      audioBtn.addEventListener('click', () => {
+        isMuted = !isMuted;
+        soundEngine.isMuted = isMuted;
+        audioBtn.textContent = isMuted ? '🔇 MUTED' : '🔊 AUDIO';
+        audioBtn.style.color = isMuted ? '#ff0055' : '#00f0ff';
+      });
+
+      // リザルト画面ボタン
+      document.getElementById('btn-retry').addEventListener('click', () => {
+        document.getElementById('result-screen').classList.add('hidden');
+        const v = getSelectedValue('vehicle-selector') || 'patrol';
+        const t = getSelectedValue('target-selector') || 'truck';
+        const m = getSelectedValue('map-selector') || 'megacity';
+        game.startGame(v, m, t);
+      });
+
+      document.getElementById('btn-back-menu').addEventListener('click', () => {
+        document.getElementById('result-screen').classList.add('hidden');
+        document.getElementById('hud-overlay').classList.remove('active');
+        document.getElementById('menu-screen').style.display = 'flex';
+        game.clearGame();
+        game.state = 'MENU';
+      });
+    });
+  </script>
+</body>
+</html>

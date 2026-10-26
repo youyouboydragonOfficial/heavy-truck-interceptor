@@ -1,0 +1,6 @@
+node_modules/
+dist/win-unpacked/
+dist/*.blockmap
+dist/*.yaml
+*.log
+.DS_Store

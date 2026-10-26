@@ -1,0 +1,56 @@
+{
+  "name": "heavy-truck-interceptor",
+  "productName": "HeavyTruckInterceptor",
+  "version": "1.0.0",
+  "description": "Hyper-Realistic Vehicle Soft-Body & Destruction Physics Simulator - Stop the Rampaging Heavy Trucks!",
+  "main": "main.js",
+  "author": "youyouboydragonOfficial",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/youyouboydragonOfficial/heavy-truck-interceptor.git"
+  },
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win --x64"
+  },
+  "devDependencies": {
+    "electron": "^40.5.1",
+    "electron-builder": "^26.7.0"
+  },
+  "dependencies": {
+    "three": "^0.180.0"
+  },
+  "build": {
+    "appId": "com.youyouboydragon.heavytruckinterceptor",
+    "productName": "HeavyTruckInterceptor",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "${productName}-Setup-v${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-v${version}.${ext}"
+    }
+  }
+}
