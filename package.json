@@ -15,7 +15,7 @@
     "build:win": "electron-builder --win --x64"
   },
   "devDependencies": {
-    "electron": "^40.5.1",
+    "electron": "33.2.1",
     "electron-builder": "^26.7.0"
   },
   "dependencies": {
@@ -24,6 +24,7 @@
   "build": {
     "appId": "com.youyouboydragon.heavytruckinterceptor",
     "productName": "HeavyTruckInterceptor",
+    "electronVersion": "33.2.1",
     "directories": {
       "output": "dist"
     },

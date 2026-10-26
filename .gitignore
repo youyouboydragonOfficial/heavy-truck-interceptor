@@ -4,3 +4,6 @@ dist/*.blockmap
 dist/*.yaml
 *.log
 .DS_Store
+
+build_dist/
+dist/
