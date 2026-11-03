@@ -1,14 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@500;600;700&display=swap');
 
 :root {
   --neon-cyan: #00f0ff;
+  --neon-blue: #0077ff;
   --neon-red: #ff0055;
   --neon-orange: #ff7700;
   --neon-green: #00ff88;
   --neon-yellow: #ffea00;
-  --bg-dark: #07090e;
-  --panel-bg: rgba(10, 15, 25, 0.85);
-  --border-cyan: rgba(0, 240, 255, 0.4);
+  --bg-dark: #05070c;
+  --panel-bg: rgba(9, 13, 22, 0.82);
+  --panel-bg-hover: rgba(13, 20, 35, 0.92);
+  --border-cyan: rgba(0, 240, 255, 0.35);
+  --border-glow: 0 0 16px rgba(0, 240, 255, 0.25);
 }
 
 * {
@@ -44,184 +47,511 @@ body {
   width: 100%;
   height: 100%;
   pointer-events: none;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%);
   background-size: 100% 4px;
-  z-index: 5;
-  opacity: 0.7;
+  z-index: 4;
+  opacity: 0.55;
 }
 
-/* 共通UIパネル */
-.ui-panel {
-  position: absolute;
-  z-index: 10;
-  background: var(--panel-bg);
-  border: 1px solid var(--border-cyan);
-  backdrop-filter: blur(10px);
-  border-radius: 4px;
-  box-shadow: 0 0 20px rgba(0, 240, 255, 0.15), inset 0 0 15px rgba(0, 240, 255, 0.05);
-}
-
-/* ヘッダー・トップバー */
-#top-bar {
-  top: 15px;
-  left: 20px;
-  right: 20px;
-  height: 54px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-}
-
-.logo-text {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 20px;
-  font-weight: 900;
-  letter-spacing: 2px;
-  color: var(--neon-cyan);
-  text-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
-}
-
-.sub-tag {
-  font-size: 11px;
-  color: #8892b0;
-  margin-left: 10px;
-  letter-spacing: 1px;
-}
-
-.top-actions {
-  display: flex;
-  gap: 15px;
-  align-items: center;
-}
-
-.cyber-btn {
-  background: rgba(0, 240, 255, 0.1);
-  border: 1px solid var(--neon-cyan);
-  color: var(--neon-cyan);
-  font-family: 'Orbitron', sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 8px 18px;
-  cursor: pointer;
-  letter-spacing: 1px;
-  transition: all 0.2s ease;
-  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
-}
-
-.cyber-btn:hover {
-  background: var(--neon-cyan);
-  color: #000;
-  box-shadow: 0 0 15px var(--neon-cyan);
-}
-
-.cyber-btn.danger {
-  border-color: var(--neon-red);
-  color: var(--neon-red);
-  background: rgba(255, 0, 85, 0.1);
-}
-
-.cyber-btn.danger:hover {
-  background: var(--neon-red);
-  color: #fff;
-  box-shadow: 0 0 15px var(--neon-red);
-}
-
-/* メニュー画面 */
-#menu-screen {
-  top: 90px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 940px;
-  max-width: 95vw;
-  padding: 30px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.menu-title {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 26px;
-  color: #fff;
-  text-align: center;
-  letter-spacing: 3px;
-  text-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
-}
-
-.selection-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.section-label {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 13px;
-  color: var(--neon-cyan);
-  letter-spacing: 2px;
-}
-
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-}
-
-.select-card {
-  background: rgba(15, 22, 36, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 14px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.select-card:hover {
-  border-color: var(--neon-cyan);
-  background: rgba(0, 240, 255, 0.08);
-}
-
-.select-card.selected {
-  border-color: var(--neon-cyan);
-  background: rgba(0, 240, 255, 0.18);
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
-}
-
-.card-title {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 13px;
-  font-weight: 700;
-  color: #fff;
-  margin-bottom: 6px;
-}
-
-.card-desc {
-  font-size: 12px;
-  color: #8fa0b5;
-  line-height: 1.4;
-}
-
-.start-btn-wrap {
-  display: flex;
-  justify-content: center;
-  margin-top: 10px;
-}
-
-.start-btn {
-  font-size: 18px;
-  padding: 14px 48px;
-}
-
-/* ゲームHUD */
-#hud-overlay {
+/* 背景ビネット（映画風の陰影） */
+.vignette {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 10;
+  background: radial-gradient(circle at center, transparent 40%, rgba(0, 4, 10, 0.75) 100%);
+  z-index: 5;
+}
+
+/* 共通パネル */
+.ui-panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-cyan);
+  backdrop-filter: blur(12px);
+  border-radius: 6px;
+  box-shadow: var(--border-glow), inset 0 0 20px rgba(0, 240, 255, 0.04);
+}
+
+/* ヘッダー・トップバー */
+#top-bar {
+  position: absolute;
+  top: 12px;
+  left: 18px;
+  right: 18px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 20;
+}
+
+.logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-badge {
+  background: linear-gradient(135deg, #ff0055, #ff7700);
+  color: #fff;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 3px 8px;
+  border-radius: 3px;
+  letter-spacing: 1px;
+}
+
+.logo-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #fff;
+  text-shadow: 0 0 12px rgba(0, 240, 255, 0.8);
+}
+
+.sub-tag {
+  font-size: 11px;
+  color: #7b8ea8;
+  letter-spacing: 1.5px;
+}
+
+.top-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.cyber-btn {
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid var(--border-cyan);
+  color: var(--neon-cyan);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 7px 16px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cyber-btn:hover {
+  background: var(--neon-cyan);
+  color: #05070c;
+  box-shadow: 0 0 18px var(--neon-cyan);
+  border-color: #fff;
+  transform: translateY(-1px);
+}
+
+.cyber-btn:active {
+  transform: translateY(1px);
+}
+
+.cyber-btn.danger {
+  border-color: rgba(255, 0, 85, 0.4);
+  color: var(--neon-red);
+  background: rgba(255, 0, 85, 0.08);
+}
+
+.cyber-btn.danger:hover {
+  background: var(--neon-red);
+  color: #fff;
+  box-shadow: 0 0 18px var(--neon-red);
+  border-color: #fff;
+}
+
+/* ===================================================
+   メニュー画面 (全画面オーバーレイ・中央シネマティック)
+   =================================================== */
+#menu-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  padding: 76px 24px 20px 24px;
+  gap: 20px;
+}
+
+/* 左パネル：車両ドシエ（スペック＆選択） */
+.menu-dossier-panel {
+  pointer-events: auto;
+  width: 380px;
+  max-width: 35vw;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.panel-header-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  letter-spacing: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+  padding-bottom: 8px;
+}
+
+/* 車両セレクターボタン群 */
+.vehicle-tab-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.vehicle-tab-btn {
+  background: rgba(12, 18, 30, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ccd6e0;
+  padding: 10px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.vehicle-tab-btn:hover {
+  border-color: var(--neon-cyan);
+  background: rgba(0, 240, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.vehicle-tab-btn.active {
+  border-color: var(--neon-cyan);
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.22), rgba(0, 119, 255, 0.15));
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.35);
+}
+
+.v-icon-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.v-icon {
+  font-size: 18px;
+}
+
+.v-class-badge {
+  font-size: 9px;
+  font-family: 'Orbitron', sans-serif;
+  padding: 2px 5px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #8fa0b5;
+}
+
+.vehicle-tab-btn.active .v-class-badge {
+  background: var(--neon-cyan);
+  color: #000;
+  font-weight: bold;
+}
+
+.v-tab-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* 車両詳細スペックカード */
+.vehicle-spec-card {
+  background: rgba(8, 12, 20, 0.85);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 4px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.spec-vehicle-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 17px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 1px;
+}
+
+.spec-vehicle-desc {
+  font-size: 12px;
+  color: #9ab0c7;
+  line-height: 1.45;
+}
+
+.spec-bar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.spec-bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.spec-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #7b8ea8;
+  font-family: 'Orbitron', sans-serif;
+}
+
+.spec-bar-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.spec-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fill-speed { background: linear-gradient(90deg, #00f0ff, #0077ff); }
+.fill-ram { background: linear-gradient(90deg, #ff0055, #ff7700); }
+.fill-armor { background: linear-gradient(90deg, #00ff88, #00f0ff); }
+.fill-handling { background: linear-gradient(90deg, #ffea00, #ff7700); }
+
+/* 特殊装備ボックス */
+.special-ability-box {
+  background: rgba(255, 234, 0, 0.07);
+  border: 1px solid rgba(255, 234, 0, 0.3);
+  padding: 10px 12px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.special-badge {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  font-weight: 900;
+  background: var(--neon-yellow);
+  color: #000;
+  padding: 3px 6px;
+  border-radius: 2px;
+}
+
+.special-desc {
+  font-size: 11px;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* 右パネル：ターゲット＆マップ設定 */
+.menu-mission-panel {
+  pointer-events: auto;
+  width: 360px;
+  max-width: 35vw;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+/* ターゲット選択グリッド */
+.target-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.target-item-btn {
+  background: rgba(12, 18, 30, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 10px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: all 0.2s ease;
+}
+
+.target-item-btn:hover {
+  border-color: var(--neon-red);
+  background: rgba(255, 0, 85, 0.1);
+}
+
+.target-item-btn.active {
+  border-color: var(--neon-red);
+  background: linear-gradient(135deg, rgba(255, 0, 85, 0.22), rgba(255, 119, 0, 0.15));
+  box-shadow: 0 0 14px rgba(255, 0, 85, 0.35);
+}
+
+.target-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.target-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.target-hp-tag {
+  font-size: 10px;
+  font-family: 'Orbitron', sans-serif;
+  color: var(--neon-red);
+  font-weight: bold;
+}
+
+.target-sub {
+  font-size: 11px;
+  color: #8fa0b5;
+}
+
+/* マップ選択グリッド */
+.map-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.map-card-btn {
+  background: rgba(12, 18, 30, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: all 0.2s ease;
+}
+
+.map-card-btn:hover {
+  border-color: var(--neon-cyan);
+  background: rgba(0, 240, 255, 0.1);
+}
+
+.map-card-btn.active {
+  border-color: var(--neon-cyan);
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(0, 119, 255, 0.15));
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
+}
+
+.map-card-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.map-card-weather {
+  font-size: 10px;
+  color: #7b8ea8;
+}
+
+/* 下部中央：出動アクションバー */
+.menu-center-action {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 25;
+}
+
+/* 巨大出動ボタン */
+.deploy-master-btn {
+  background: linear-gradient(135deg, #ff0055 0%, #ff5500 50%, #ffaa00 100%);
+  border: 2px solid #fff;
+  color: #fff;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 18px;
+  font-weight: 900;
+  padding: 16px 54px;
+  border-radius: 6px;
+  cursor: pointer;
+  letter-spacing: 2px;
+  box-shadow: 0 0 30px rgba(255, 0, 85, 0.6), inset 0 0 15px rgba(255, 255, 255, 0.3);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  animation: deployPulse 2s infinite ease-in-out;
+}
+
+@keyframes deployPulse {
+  0% { transform: scale(1); box-shadow: 0 0 25px rgba(255, 0, 85, 0.5); }
+  50% { transform: scale(1.03); box-shadow: 0 0 40px rgba(255, 0, 85, 0.85); }
+  100% { transform: scale(1); box-shadow: 0 0 25px rgba(255, 0, 85, 0.5); }
+}
+
+.deploy-master-btn:hover {
+  background: linear-gradient(135deg, #ff2277 0%, #ff7700 50%, #ffbb00 100%);
+  box-shadow: 0 0 50px rgba(255, 0, 85, 1);
+  transform: scale(1.06) translateY(-2px);
+  border-color: #ffffdd;
+}
+
+.deploy-master-btn:active {
+  transform: scale(0.98) translateY(2px);
+}
+
+.deploy-key-hint {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  color: #ccd6e0;
+  letter-spacing: 1.5px;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.6);
+  padding: 3px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.deploy-key-hint kbd {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: bold;
+}
+
+/* ===================================================
+   ゲームプレイ HUD
+   =================================================== */
+#hud-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 12;
   display: none;
 }
 
@@ -232,23 +562,23 @@ body {
 /* ターゲット大型車両HPバー（画面上部中央） */
 .target-hud-box {
   position: absolute;
-  top: 80px;
+  top: 72px;
   left: 50%;
   transform: translateX(-50%);
-  width: 600px;
-  max-width: 90vw;
-  background: rgba(15, 10, 15, 0.85);
+  width: 580px;
+  max-width: 88vw;
+  background: rgba(12, 8, 14, 0.88);
   border: 1px solid var(--neon-red);
   padding: 12px 20px;
-  border-radius: 4px;
-  box-shadow: 0 0 20px rgba(255, 0, 85, 0.3);
+  border-radius: 6px;
+  box-shadow: 0 0 24px rgba(255, 0, 85, 0.35);
 }
 
 .target-header {
   display: flex;
   justify-content: space-between;
   font-family: 'Orbitron', sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--neon-red);
   letter-spacing: 1px;
@@ -262,12 +592,13 @@ body {
   border: 1px solid rgba(255, 0, 85, 0.5);
   position: relative;
   overflow: hidden;
+  border-radius: 3px;
 }
 
 .gauge-bar-inner {
   height: 100%;
-  background: linear-gradient(90deg, #ff0055, #ff5500);
-  box-shadow: 0 0 10px var(--neon-red);
+  background: linear-gradient(90deg, #ff0055, #ff7700);
+  box-shadow: 0 0 12px var(--neon-red);
   width: 100%;
   transition: width 0.15s ease-out;
 }
@@ -275,13 +606,13 @@ body {
 /* プレイヤー計器（画面左下） */
 .player-hud-box {
   position: absolute;
-  bottom: 30px;
-  left: 30px;
-  width: 320px;
+  bottom: 24px;
+  left: 24px;
+  width: 330px;
   background: var(--panel-bg);
   border: 1px solid var(--border-cyan);
   padding: 18px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 .speedometer {
@@ -296,7 +627,7 @@ body {
   font-size: 54px;
   font-weight: 900;
   color: #fff;
-  text-shadow: 0 0 15px rgba(0, 240, 255, 0.6);
+  text-shadow: 0 0 16px rgba(0, 240, 255, 0.7);
   line-height: 1;
 }
 
@@ -304,17 +635,19 @@ body {
   font-family: 'Orbitron', sans-serif;
   font-size: 16px;
   color: var(--neon-cyan);
+  font-weight: 700;
 }
 
 .stat-row {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .stat-label-wrap {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
-  color: #a0aec0;
+  font-size: 11px;
+  color: #9cb0c9;
+  font-family: 'Orbitron', sans-serif;
   margin-bottom: 4px;
 }
 
@@ -328,45 +661,46 @@ body {
   box-shadow: 0 0 10px var(--neon-orange);
 }
 
-/* コントロールガイド（画面右下） */
+/* 操作ガイド（画面右下） */
 .controls-hud-box {
   position: absolute;
-  bottom: 30px;
-  right: 30px;
+  bottom: 24px;
+  right: 24px;
   background: var(--panel-bg);
   border: 1px solid var(--border-cyan);
-  padding: 14px 20px;
+  padding: 14px 18px;
   font-size: 12px;
-  color: #ccd6f6;
-  border-radius: 4px;
+  color: #ccd6e0;
+  border-radius: 6px;
 }
 
 .controls-hud-box kbd {
-  background: rgba(0, 240, 255, 0.2);
+  background: rgba(0, 240, 255, 0.18);
   border: 1px solid var(--neon-cyan);
   color: #fff;
   padding: 2px 6px;
   border-radius: 3px;
   font-family: 'Orbitron', sans-serif;
-  margin: 0 3px;
+  font-size: 10px;
+  margin: 0 2px;
 }
 
-/* アナウンスメントティッカー（画面中央上部） */
+/* アナウンスメントティッカー */
 #hud-announcement {
   position: absolute;
-  top: 155px;
+  top: 145px;
   left: 50%;
   transform: translateX(-50%);
   font-family: 'Orbitron', sans-serif;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--neon-yellow);
-  background: rgba(0, 0, 0, 0.7);
-  padding: 8px 25px;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 8px 24px;
   border: 1px solid var(--neon-yellow);
-  border-radius: 3px;
+  border-radius: 4px;
   letter-spacing: 2px;
-  text-shadow: 0 0 10px var(--neon-yellow);
+  text-shadow: 0 0 12px var(--neon-yellow);
   opacity: 0;
   transition: opacity 0.25s ease;
   pointer-events: none;
@@ -378,7 +712,7 @@ body {
 
 #hud-impact-score {
   position: absolute;
-  top: 200px;
+  top: 195px;
   left: 50%;
   transform: translateX(-50%);
   font-family: 'Orbitron', sans-serif;
@@ -387,7 +721,7 @@ body {
   color: var(--neon-cyan);
   opacity: 0;
   transition: opacity 0.2s ease, transform 0.2s ease;
-  text-shadow: 0 0 12px var(--neon-cyan);
+  text-shadow: 0 0 14px var(--neon-cyan);
 }
 
 #hud-impact-score.flash {
@@ -395,21 +729,23 @@ body {
   transform: translateX(-50%) scale(1.2);
 }
 
-/* アプリ内アップデーターモーダル */
+/* ===================================================
+   アプリ内アップデーターモーダル（3秒スキャン）
+   =================================================== */
 #updater-modal {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 720px;
+  width: 680px;
   max-width: 92vw;
-  padding: 28px;
-  z-index: 50;
+  padding: 26px;
+  z-index: 60;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   border: 1px solid var(--neon-cyan);
-  box-shadow: 0 0 35px rgba(0, 240, 255, 0.35);
+  box-shadow: 0 0 45px rgba(0, 240, 255, 0.4);
 }
 
 .modal-header {
@@ -420,28 +756,27 @@ body {
 
 .modal-title {
   font-family: 'Orbitron', sans-serif;
-  font-size: 18px;
+  font-size: 16px;
   color: var(--neon-cyan);
   letter-spacing: 2px;
 }
 
-/* レーダー・アニメーション（かっこいいサイバー演出） */
 .radar-anim-wrap {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 110px;
+  height: 100px;
   position: relative;
 }
 
 .radar-circle {
-  width: 90px;
-  height: 90px;
+  width: 86px;
+  height: 86px;
   border-radius: 50%;
-  border: 2px solid rgba(0, 240, 255, 0.4);
+  border: 2px solid rgba(0, 240, 255, 0.45);
   position: relative;
   overflow: hidden;
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.25);
 }
 
 .radar-sweep {
@@ -450,7 +785,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: conic-gradient(from 0deg, transparent 70%, rgba(0, 240, 255, 0.7) 100%);
+  background: conic-gradient(from 0deg, transparent 70%, rgba(0, 240, 255, 0.75) 100%);
   animation: radarRotate 1.5s linear infinite;
   border-radius: 50%;
 }
@@ -469,19 +804,19 @@ body {
 }
 
 .updater-console {
-  height: 140px;
-  background: rgba(0, 5, 12, 0.9);
-  border: 1px solid rgba(0, 240, 255, 0.2);
+  height: 135px;
+  background: rgba(0, 5, 12, 0.92);
+  border: 1px solid rgba(0, 240, 255, 0.25);
   padding: 10px;
   overflow-y: auto;
   font-family: monospace;
   font-size: 11px;
   color: #4cd3d6;
-  border-radius: 2px;
+  border-radius: 3px;
 }
 
 .log-line {
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .log-highlight { color: var(--neon-cyan); font-weight: bold; }
@@ -495,25 +830,27 @@ body {
   gap: 12px;
 }
 
-/* リザルト画面 */
+/* ===================================================
+   リザルト画面
+   =================================================== */
 #result-screen {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 580px;
+  width: 560px;
   max-width: 90vw;
-  padding: 35px;
-  z-index: 40;
+  padding: 32px;
+  z-index: 50;
   text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .result-title {
   font-family: 'Orbitron', sans-serif;
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 900;
   letter-spacing: 3px;
 }

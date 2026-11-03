@@ -16,10 +16,19 @@ export class Game {
     this.environment = null;
 
     // ゲーム状態
-    this.state = 'MENU'; // MENU, PLAYING, WON, LOST
+    this.state = 'MENU'; // 'MENU', 'PLAYING', 'WON', 'LOST'
     this.selectedVehicleType = 'patrol';
     this.selectedMap = 'megacity';
     this.selectedTargetType = 'truck';
+
+    // デモプレイ（Attract Mode）用オブジェクト
+    this.demoInterceptor = null;
+    this.demoTarget = null;
+    this.demoTraffics = [];
+    this.demoZ = 0;
+    this.demoTimer = 0;
+    this.demoCamAngle = 0.8;
+    this.demoRamTimer = 0;
 
     // プレイヤー車両
     this.player = null;
@@ -76,6 +85,7 @@ export class Game {
 
     this.initThree();
     this.setupInputs();
+    this.setupDemo(); // 起動直後から大迫力の3Dデモチェイスが爆走！
   }
 
   initThree() {
@@ -136,10 +146,10 @@ export class Game {
     this.ultraPhysicsEnabled = !this.ultraPhysicsEnabled;
     this.physics.setUltraMode(this.ultraPhysicsEnabled);
     if (this.hudPhysicsMode) {
-      this.hudPhysicsMode.textContent = this.ultraPhysicsEnabled ? 'ULTRA OVERCLOCK (EXTREME LOAD)' : 'NORMAL 60FPS';
+      this.hudPhysicsMode.textContent = this.ultraPhysicsEnabled ? 'ULTRA OVERCLOCK (PC-MELTING)' : 'NORMAL 60FPS';
       this.hudPhysicsMode.style.color = this.ultraPhysicsEnabled ? '#ff0055' : '#00f0ff';
     }
-    this.showAnnouncement(this.ultraPhysicsEnabled ? 'ULTRA PHYSICS ENGINE ENGAGED: OVERCLOCKING SIMULATION' : 'PHYSICS ENGINE: OPTIMIZED MODE');
+    this.showAnnouncement(this.ultraPhysicsEnabled ? 'ULTRA PHYSICS ENGINE ENGAGED: MAXIMUM LOAD SIMULATION' : 'PHYSICS ENGINE: OPTIMIZED MODE');
   }
 
   onWindowResize() {
@@ -148,7 +158,184 @@ export class Game {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
-  // --- ゲーム開始 ---
+  // =========================================================================
+  // スタート画面 3Dデモプレイ・シネマティックアニメーション (Attract Mode)
+  // =========================================================================
+  setupDemo() {
+    this.state = 'MENU';
+    this.clearGame();
+
+    // 選択中のマップをロード
+    this.environment.loadMap(this.selectedMap);
+
+    this.demoZ = 0;
+    this.demoCamAngle = 0.6;
+    this.demoRamTimer = 0;
+
+    // 1. デモ用標的車両
+    this.spawnDemoTarget(this.selectedTargetType);
+
+    // 2. デモ用捜査車両
+    this.spawnDemoInterceptor(this.selectedVehicleType);
+
+    // 3. デモ用一般車
+    this.spawnDemoTraffics();
+  }
+
+  spawnDemoTarget(type) {
+    if (this.demoTarget) {
+      this.scene.remove(this.demoTarget.root);
+      this.demoTarget = null;
+    }
+    if (type === 'truck') {
+      this.demoTarget = this.vehicleFactory.create18Wheeler();
+    } else if (type === 'bus') {
+      this.demoTarget = this.vehicleFactory.createWildBus();
+    } else if (type === 'crusher') {
+      this.demoTarget = this.vehicleFactory.createArmoredCrusher();
+    }
+    this.demoTarget.root.position.set(1.5, 0, this.demoZ + 22);
+    this.scene.add(this.demoTarget.root);
+  }
+
+  spawnDemoInterceptor(type) {
+    if (this.demoInterceptor) {
+      this.scene.remove(this.demoInterceptor.root);
+      this.demoInterceptor = null;
+    }
+    if (type === 'patrol') {
+      this.demoInterceptor = this.vehicleFactory.createPatrolCrown();
+    } else if (type === 'supercar') {
+      this.demoInterceptor = this.vehicleFactory.createSupercar();
+    } else if (type === 'suv') {
+      this.demoInterceptor = this.vehicleFactory.createHeavySUV();
+    } else if (type === 'rhino') {
+      this.demoInterceptor = this.vehicleFactory.createRhinoRam();
+    }
+    this.demoInterceptor.root.position.set(-1.8, 0, this.demoZ);
+    this.scene.add(this.demoInterceptor.root);
+  }
+
+  spawnDemoTraffics() {
+    this.demoTraffics.forEach(t => this.scene.remove(t.root));
+    this.demoTraffics = [];
+    const colors = [0x2980b9, 0x8e44ad, 0x27ae60];
+    colors.forEach((c, idx) => {
+      const car = this.vehicleFactory.createCivilianCar(c);
+      car.root.position.set([-6, 6][idx % 2], 0, this.demoZ + 50 + idx * 40);
+      this.scene.add(car.root);
+      this.demoTraffics.push(car);
+    });
+  }
+
+  // UIで車両が選択されたときにデモ追跡車を即時更新
+  updateDemoVehicle(type) {
+    this.selectedVehicleType = type;
+    if (this.state === 'MENU') {
+      this.spawnDemoInterceptor(type);
+    }
+  }
+
+  // UIで標的が選択されたときにデモ標的を即時更新
+  updateDemoTarget(type) {
+    this.selectedTargetType = type;
+    if (this.state === 'MENU') {
+      this.spawnDemoTarget(type);
+    }
+  }
+
+  // UIでマップが選択されたときに環境を即時更新
+  updateDemoMap(map) {
+    this.selectedMap = map;
+    if (this.state === 'MENU') {
+      this.environment.loadMap(map);
+    }
+  }
+
+  // メニュー画面の毎フレーム更新（猛スピードチェイス＆体当たり火花＆カメラ旋回）
+  updateDemo(dt) {
+    // 時速140kmで前進
+    const speedMs = 39.0;
+    this.demoZ += speedMs * dt;
+    this.demoTimer += dt;
+    this.demoRamTimer += dt;
+
+    const baseZ = this.demoZ;
+
+    // 1. 標的車両の走行
+    if (this.demoTarget) {
+      const swerve = Math.sin(this.demoTimer * 1.5) * 1.8;
+      this.demoTarget.root.position.set(1.2 + swerve, 0, baseZ + 20);
+      this.demoTarget.root.rotation.y = Math.cos(this.demoTimer * 1.5) * 0.08;
+      if (this.demoTarget.trailerGroup) {
+        this.demoTarget.trailerGroup.rotation.y = -Math.cos(this.demoTimer * 1.5) * 0.12;
+      }
+      // 車輪回転
+      this.demoTarget.wheels.forEach(w => {
+        w.rotation.x += speedMs * dt * 2.0;
+      });
+    }
+
+    // 2. 捜査車両のチェイス＆体当たりタックル
+    if (this.demoInterceptor) {
+      // 2.2秒ごとにトラックの側面に強烈タックル！
+      let lateralOffset = -2.2;
+      let rotY = 0;
+      if (this.demoRamTimer > 2.0) {
+        // 体当たり直撃フェーズ
+        lateralOffset = 0.2;
+        rotY = 0.15;
+
+        // 火花と破片を激しく放出！
+        if (Math.random() < 0.45) {
+          const hitPos = new THREE.Vector3(
+            0.5,
+            1.0,
+            baseZ + 16
+          );
+          this.physics.createImpactExplosion(hitPos, new THREE.Vector3(0, 0, speedMs), 1.2);
+          if (Math.random() < 0.25) soundEngine.playCrash(0.6);
+        }
+
+        if (this.demoRamTimer > 2.7) {
+          this.demoRamTimer = 0;
+        }
+      }
+
+      this.demoInterceptor.root.position.set(lateralOffset, 0, baseZ + 14);
+      this.demoInterceptor.root.rotation.y = rotY;
+
+      // 車輪回転
+      this.demoInterceptor.wheels.forEach(w => {
+        w.rotation.x += speedMs * dt * 2.5;
+      });
+    }
+
+    // 3. 一般車の走行＆リサイクル
+    this.demoTraffics.forEach(car => {
+      car.root.position.z += (car.speed / 3.6) * dt;
+      if (car.root.position.z < baseZ - 20) {
+        car.root.position.z = baseZ + 120 + Math.random() * 40;
+      }
+    });
+
+    // 4. シネマティックカメラの滑らか旋回
+    this.demoCamAngle += dt * 0.22;
+    const camDist = 18.0;
+    const camHeight = 5.2 + Math.sin(this.demoTimer * 0.5) * 1.5;
+    const camX = Math.sin(this.demoCamAngle) * camDist;
+    const camZ = baseZ + 16 + Math.cos(this.demoCamAngle) * camDist;
+
+    this.camera.position.set(camX, camHeight, camZ);
+    this.camera.lookAt(new THREE.Vector3(0, 1.8, baseZ + 18));
+
+    // 5. 環境チャンクの循環更新
+    this.environment.update(baseZ, dt);
+  }
+
+  // =========================================================================
+  // 本番ゲームプレイ開始 (出動ボタン押下時)
+  // =========================================================================
   startGame(vehicleType, mapType, targetType) {
     this.selectedVehicleType = vehicleType;
     this.selectedMap = mapType;
@@ -174,7 +361,7 @@ export class Game {
     this.player.root.position.copy(this.playerPos);
     this.scene.add(this.player.root);
 
-    this.playerSpeed = 80;
+    this.playerSpeed = 90;
     this.playerIntegrity = this.player.stats.integrity;
     this.nitroFuel = 100;
 
@@ -209,7 +396,7 @@ export class Game {
       soundEngine.toggleSiren(false);
     }
 
-    this.showAnnouncement('INTERCEPTOR DISPATCHED: RAM & NEUTRALIZE TARGET!');
+    this.showAnnouncement('INTERCEPTOR DISPATCHED: RAM & DESTROY THE TARGET!');
   }
 
   spawnTraffics() {
@@ -229,6 +416,17 @@ export class Game {
   }
 
   clearGame() {
+    if (this.demoInterceptor) {
+      this.scene.remove(this.demoInterceptor.root);
+      this.demoInterceptor = null;
+    }
+    if (this.demoTarget) {
+      this.scene.remove(this.demoTarget.root);
+      this.demoTarget = null;
+    }
+    this.demoTraffics.forEach(t => this.scene.remove(t.root));
+    this.demoTraffics = [];
+
     if (this.player) {
       this.scene.remove(this.player.root);
       this.player = null;
@@ -303,7 +501,10 @@ export class Game {
       this.fpsTimer = now;
     }
 
-    if (this.state === 'PLAYING') {
+    if (this.state === 'MENU') {
+      // メニュー中は大迫力3Dデモチェイスが自動で動く！
+      this.updateDemo(dt);
+    } else if (this.state === 'PLAYING') {
       this.updatePlayer(dt);
       this.updateTarget(dt);
       this.updateTraffics(dt);
@@ -311,13 +512,11 @@ export class Game {
       this.updateCamera(dt);
       this.updateHUD();
       this.checkWinLoss();
-    }
-
-    // 物理エンジン & 環境更新
-    this.physics.update(dt);
-    if (this.player) {
       this.environment.update(this.playerPos.z, dt);
     }
+
+    // 物理エンジン更新（火花・デブリ・剛体）
+    this.physics.update(dt);
 
     this.renderer.render(this.scene, this.camera);
   }
@@ -483,14 +682,13 @@ export class Game {
     const dz = Math.abs(this.playerPos.z - this.targetPos.z);
 
     const hitWidth = 2.4;
-    const hitLength = 8.5; // トラックの長大な車体
+    const hitLength = 8.5;
 
     if (dx < hitWidth && dz < hitLength) {
       this.handlePlayerTargetCrash();
     }
   }
 
-  // プレイヤーと暴走トラックの猛烈なクラッシュ処理
   handlePlayerTargetCrash() {
     const relSpeedKmh = this.playerSpeed - this.targetSpeed;
     const absRelSpeed = Math.abs(relSpeedKmh);
@@ -510,7 +708,7 @@ export class Game {
       (this.playerPos.z + this.targetPos.z) * 0.5
     );
 
-    // 1. 超リアル 頂点メッシュ変形（Soft-body Crumple）
+    // 1. リアルタイム頂点メッシュ変形（Soft-body Crumple）
     if (this.player.parts.body) {
       const localP = this.player.parts.body.worldToLocal(contactPoint.clone());
       this.physics.applyMeshDeformation(this.player.parts.body, localP, new THREE.Vector3(0, 0, -1), impactForce, 2.5);
