@@ -2,7 +2,7 @@
 !include "FileFunc.nsh"
 
 Name "Heavy Truck Interceptor (Portable)"
-OutFile "dist\HeavyTruckInterceptor-Portable-v1.2.0.exe"
+OutFile "dist\HeavyTruckInterceptor-Portable-v1.3.0.exe"
 RequestExecutionLevel user
 SilentInstall silent
 SetCompressor /SOLID lzma

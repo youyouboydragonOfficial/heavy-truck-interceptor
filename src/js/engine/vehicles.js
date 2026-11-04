@@ -1,708 +1,826 @@
+// =========================================================================
+// HEAVY TRUCK INTERCEPTOR: HIGH-FIDELITY 3D VEHICLE FACTORY
+// 超リアル3D車両モデリング＆マテリアル
+// - POLICE CROWN (高速捜査用パトロールセダン・赤青LEDストロボ)
+// - V12 PHANTOM (超高速スーパーカー・大型GTウィング・ツインターボ)
+// - TITAN 4x4 (重装甲タクティカルSUV・極厚アイアンブルバー)
+// - RHINO RAM (特装排土板ジャガーノート・V字ウェッジ)
+// - 18-WHEELER MEGA HAULER (アメリカン18輪メガトラック・クローム煙突・波板コンテナ)
+// - TWIN-DECK WILD BUS (2階建て暴走エアロバス)
+// - ARMORED MEGA-CRUSHER (回転スパイク付き超重装甲クラッシャー)
+// =========================================================================
+
 import * as THREE from '../../assets/three.module.js';
 
 export class VehicleFactory {
   constructor(scene, physics) {
     this.scene = scene;
     this.physics = physics;
-  }
 
-  // --- ヘルパー：ホイール作成 ---
-  createWheel(radius = 0.42, width = 0.3) {
-    const group = new THREE.Group();
-    const geom = new THREE.CylinderGeometry(radius, radius, width, 16);
-    geom.rotateZ(Math.PI / 2);
-    const mat = new THREE.MeshStandardMaterial({
-      color: 0x1a1a1a,
-      roughness: 0.9,
+    // 共有マテリアル
+    this.rubberMat = new THREE.MeshStandardMaterial({
+      color: 0x181818,
+      roughness: 0.85,
       metalness: 0.1
     });
-    const tire = new THREE.Mesh(geom, mat);
+
+    this.chromeMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.08,
+      metalness: 0.95
+    });
+
+    this.glassMat = new THREE.MeshPhysicalMaterial({
+      color: 0x05101a,
+      roughness: 0.1,
+      metalness: 0.1,
+      transmission: 0.85,
+      transparent: true,
+      opacity: 0.88
+    });
+
+    this.headlightMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    this.taillightMat = new THREE.MeshBasicMaterial({ color: 0xff0022 });
+    this.caliperMat = new THREE.MeshStandardMaterial({ color: 0xff1100, roughness: 0.3, metalness: 0.5 });
+  }
+
+  // --- 高精度スポークホイール＆ラバータイヤ作成 ---
+  createDetailedWheel(radius = 0.44, width = 0.32, rimColor = 0xd0d0d0) {
+    const group = new THREE.Group();
+
+    // 1. ラバータイヤ (溝付き・面取り)
+    const tireGeom = new THREE.CylinderGeometry(radius, radius, width, 24);
+    tireGeom.rotateZ(Math.PI / 2);
+    const tire = new THREE.Mesh(tireGeom, this.rubberMat);
     tire.castShadow = true;
     group.add(tire);
 
-    // リム・ホイールキャップ
-    const rimGeom = new THREE.CylinderGeometry(radius * 0.65, radius * 0.65, width * 1.05, 12);
+    // 2. ホイールリム
+    const rimGeom = new THREE.CylinderGeometry(radius * 0.72, radius * 0.72, width * 1.02, 16);
     rimGeom.rotateZ(Math.PI / 2);
     const rimMat = new THREE.MeshStandardMaterial({
-      color: 0xcccccc,
-      roughness: 0.3,
-      metalness: 0.8
+      color: rimColor,
+      roughness: 0.2,
+      metalness: 0.85
     });
     const rim = new THREE.Mesh(rimGeom, rimMat);
     group.add(rim);
 
+    // 3. スポーク (5本スポーク)
+    for (let i = 0; i < 5; i++) {
+      const angle = (i / 5) * Math.PI * 2;
+      const spokeGeom = new THREE.BoxGeometry(width * 1.03, radius * 0.65, 0.06);
+      const spoke = new THREE.Mesh(spokeGeom, rimMat);
+      spoke.position.set(0, (radius * 0.32) * Math.sin(angle), (radius * 0.32) * Math.cos(angle));
+      spoke.rotation.x = -angle;
+      group.add(spoke);
+    }
+
+    // 4. ブレーキディスク & キャリパー
+    const discGeom = new THREE.CylinderGeometry(radius * 0.58, radius * 0.58, 0.05, 16);
+    discGeom.rotateZ(Math.PI / 2);
+    const discMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.9, roughness: 0.3 });
+    const disc = new THREE.Mesh(discGeom, discMat);
+    group.add(disc);
+
+    const caliperGeom = new THREE.BoxGeometry(0.08, radius * 0.28, radius * 0.22);
+    const caliper = new THREE.Mesh(caliperGeom, this.caliperMat);
+    caliper.position.set(0, radius * 0.35, 0);
+    group.add(caliper);
+
     return group;
   }
 
-  // ==========================================
-  // 1. 捜査用高速パトロールセダン (Patrol Crown)
-  // ==========================================
+  // =========================================================================
+  // 1. POLICE CROWN (捜査用パトロールセダン)
+  // =========================================================================
   createPatrolCrown() {
     const root = new THREE.Group();
     const parts = {};
+    const wheels = [];
 
-    // メインシャーシ（衝突で変形する）
-    const bodyGeom = new THREE.BoxGeometry(2.0, 0.75, 4.6, 6, 3, 8);
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color: 0x050505, // 黒
-      roughness: 0.2,
-      metalness: 0.6
+    // メタリックブラック塗装
+    const blackPaint = new THREE.MeshStandardMaterial({
+      color: 0x08080c,
+      roughness: 0.18,
+      metalness: 0.7
     });
-    const bodyMesh = new THREE.Mesh(bodyGeom, bodyMat);
-    bodyMesh.position.y = 0.65;
-    bodyMesh.castShadow = true;
-    root.add(bodyMesh);
-    this.physics.registerDeformable(bodyMesh);
-    parts.body = bodyMesh;
-
-    // 白ドアパネル
-    const doorGeom = new THREE.BoxGeometry(2.02, 0.55, 2.2);
-    const doorMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.2, metalness: 0.4 });
-    const doors = new THREE.Mesh(doorGeom, doorMat);
-    doors.position.set(0, 0.65, -0.1);
-    root.add(doors);
-
-    // キャビン＆ガラス
-    const cabinGeom = new THREE.BoxGeometry(1.7, 0.65, 2.3, 4, 2, 4);
-    const glassMat = new THREE.MeshPhysicalMaterial({
-      color: 0x112233,
-      transmission: 0.8,
-      roughness: 0.1,
-      metalness: 0.2,
-      transparent: true,
-      opacity: 0.85
+    // ホワイトドアパネル塗装
+    const whitePaint = new THREE.MeshStandardMaterial({
+      color: 0xedf0f5,
+      roughness: 0.22,
+      metalness: 0.5
     });
-    const cabin = new THREE.Mesh(cabinGeom, glassMat);
-    cabin.position.set(0, 1.25, -0.3);
+
+    // 1. メインロアボディ（アンダーシャーシ・バンパー含む）
+    const bodyGeom = new THREE.BoxGeometry(2.1, 0.65, 4.8, 6, 3, 8);
+    const body = new THREE.Mesh(bodyGeom, blackPaint);
+    body.position.y = 0.65;
+    body.castShadow = true;
+    root.add(body);
+    this.physics.registerDeformable(body);
+    parts.body = body;
+
+    // 2. ホワイトサイドパネル（白黒ツートン）
+    const doorL = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.52, 2.3), whitePaint);
+    doorL.position.set(-1.06, 0.68, -0.1);
+    root.add(doorL);
+    const doorR = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.52, 2.3), whitePaint);
+    doorR.position.set(1.06, 0.68, -0.1);
+    root.add(doorR);
+
+    // 3. キャビン＆スラントルーフ（Aピラー・Cピラーの傾斜）
+    const cabinGeom = new THREE.BoxGeometry(1.8, 0.62, 2.4, 4, 2, 4);
+    const cabin = new THREE.Mesh(cabinGeom, this.glassMat);
+    cabin.position.set(0, 1.25, -0.2);
     root.add(cabin);
     this.physics.registerDeformable(cabin);
     parts.cabin = cabin;
 
-    // ルーフパトランプ（赤青バー）
-    const sirenBar = new THREE.Group();
-    const redLightGeom = new THREE.BoxGeometry(0.55, 0.12, 0.25);
-    const redMat = new THREE.MeshBasicMaterial({ color: 0xff0022 });
-    const redLight = new THREE.Mesh(redLightGeom, redMat);
-    redLight.position.x = -0.35;
-    sirenBar.add(redLight);
+    // ルーフ天板
+    const roofTop = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.08, 2.3), whitePaint);
+    roofTop.position.set(0, 1.58, -0.2);
+    root.add(roofTop);
 
-    const blueLightGeom = new THREE.BoxGeometry(0.55, 0.12, 0.25);
-    const blueMat = new THREE.MeshBasicMaterial({ color: 0x0055ff });
-    const blueLight = new THREE.Mesh(blueLightGeom, blueMat);
-    blueLight.position.x = 0.35;
-    sirenBar.add(blueLight);
-
-    sirenBar.position.set(0, 1.63, -0.3);
-    root.add(sirenBar);
-    parts.siren = sirenBar;
-
-    // 強化プッシュバンパー（Bull Bar）
-    const bumperGeom = new THREE.BoxGeometry(2.1, 0.45, 0.3, 4, 2, 2);
-    const bumperMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.3 });
-    const bumper = new THREE.Mesh(bumperGeom, bumperMat);
-    bumper.position.set(0, 0.5, 2.35);
-    root.add(bumper);
-    this.physics.registerDeformable(bumper);
-    parts.frontBumper = bumper;
-
-    // ボンネットフード
-    const hoodGeom = new THREE.BoxGeometry(1.8, 0.1, 1.4, 4, 2, 4);
-    const hoodMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2, metalness: 0.6 });
-    const hood = new THREE.Mesh(hoodGeom, hoodMat);
-    hood.position.set(0, 1.05, 1.4);
+    // 4. スローピングボンネット（Hood）
+    const hoodGeom = new THREE.BoxGeometry(1.9, 0.12, 1.45, 4, 2, 4);
+    const hood = new THREE.Mesh(hoodGeom, blackPaint);
+    hood.position.set(0, 1.0, 1.45);
+    hood.rotation.x = -0.06;
     root.add(hood);
     this.physics.registerDeformable(hood);
     parts.hood = hood;
 
-    // ヘッドライト
-    const lightMat = new THREE.MeshBasicMaterial({ color: 0xffffcc });
-    const flLight = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.1), lightMat);
-    flLight.position.set(-0.75, 0.7, 2.31);
-    root.add(flLight);
-    const frLight = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.1), lightMat);
-    frLight.position.set(0.75, 0.7, 2.31);
-    root.add(frLight);
+    // 5. トランク（Rear Deck）
+    const trunkGeom = new THREE.BoxGeometry(1.9, 0.12, 1.0, 4, 2, 3);
+    const trunk = new THREE.Mesh(trunkGeom, blackPaint);
+    trunk.position.set(0, 0.98, -1.85);
+    root.add(trunk);
 
-    // 車輪 4輪
-    const wheels = [];
-    const wPositions = [
-      [-0.95, 0.42, 1.45],  // 前左
-      [0.95, 0.42, 1.45],   // 前右
-      [-0.95, 0.42, -1.45], // 後左
-      [0.95, 0.42, -1.45]   // 後右
+    // 6. 前面特装ヘビーブルバー（Push Bumper / Ram Bar）
+    const bullBar = new THREE.Group();
+    const barFrame = new THREE.Mesh(new THREE.BoxGeometry(2.15, 0.45, 0.25), this.chromeMat);
+    bullBar.add(barFrame);
+    const barWedgeL = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.7, 8), this.chromeMat);
+    barWedgeL.position.set(-0.6, 0.1, 0.1);
+    bullBar.add(barWedgeL);
+    const barWedgeR = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.7, 8), this.chromeMat);
+    barWedgeR.position.set(0.6, 0.1, 0.1);
+    bullBar.add(barWedgeR);
+    bullBar.position.set(0, 0.62, 2.45);
+    root.add(bullBar);
+    parts.frontBumper = bullBar;
+
+    // 7. 最新鋭薄型 LED ストロボサイレンバー（青赤交互フラッシュ）
+    const lightBar = new THREE.Group();
+    const lightFrame = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 0.22), this.chromeMat);
+    lightBar.add(lightFrame);
+
+    const strobeRedMat = new THREE.MeshBasicMaterial({ color: 0xff0033 });
+    const strobeRed = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.1, 0.24), strobeRedMat);
+    strobeRed.position.x = -0.32;
+    lightBar.add(strobeRed);
+
+    const strobeBlueMat = new THREE.MeshBasicMaterial({ color: 0x0066ff });
+    const strobeBlue = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.1, 0.24), strobeBlueMat);
+    strobeBlue.position.x = 0.32;
+    lightBar.add(strobeBlue);
+
+    lightBar.position.set(0, 1.66, -0.2);
+    root.add(lightBar);
+    parts.siren = lightBar;
+
+    // 8. デュアルプロジェクターヘッドライト & テールライト
+    const hlL = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.16, 0.08), this.headlightMat);
+    hlL.position.set(-0.78, 0.72, 2.41);
+    root.add(hlL);
+    const hlR = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.16, 0.08), this.headlightMat);
+    hlR.position.set(0.78, 0.72, 2.41);
+    root.add(hlR);
+
+    // ヘッドライトビームコーン（前方を照らす半透明光線）
+    const beamGeom = new THREE.ConeGeometry(3.5, 25, 16, 1, true);
+    beamGeom.rotateX(Math.PI / 2);
+    const beamMat = new THREE.MeshBasicMaterial({
+      color: 0xffffea,
+      transparent: true,
+      opacity: 0.12,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    });
+    const beam = new THREE.Mesh(beamGeom, beamMat);
+    beam.position.set(0, 0.7, 13.5);
+    root.add(beam);
+
+    const tlL = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.14, 0.08), this.taillightMat);
+    tlL.position.set(-0.78, 0.72, -2.41);
+    root.add(tlL);
+    const tlR = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.14, 0.08), this.taillightMat);
+    tlR.position.set(0.78, 0.72, -2.41);
+    root.add(tlR);
+
+    // 9. ホイール（4輪）
+    const wheelPositions = [
+      [-1.02, 0.44, 1.45],  // 前左
+      [1.02, 0.44, 1.45],   // 前右
+      [-1.02, 0.44, -1.45], // 後左
+      [1.02, 0.44, -1.45]   // 後右
     ];
-    wPositions.forEach((pos, idx) => {
-      const wheel = this.createWheel(0.42, 0.28);
+    wheelPositions.forEach((pos) => {
+      const wheel = this.createDetailedWheel(0.44, 0.30, 0xd0d0d0);
       wheel.position.set(...pos);
       root.add(wheel);
       wheels.push(wheel);
     });
 
     return {
-      type: 'patrol',
-      name: 'POLICE CROWN INTERCEPTOR',
       root,
       parts,
       wheels,
+      strobeNodes: { red: strobeRedMat, blue: strobeBlueMat },
+      name: 'POLICE CROWN INTERCEPTOR',
       stats: {
-        mass: 1950,
         maxSpeed: 250,
-        accel: 28,
+        accel: 18.5,
         handling: 3.5,
-        ramPower: 1.2,
+        armor: 100,
         integrity: 100,
-        maxIntegrity: 100,
-        specialName: 'EMP PULSE CANNON'
+        ramPower: 1.2
       }
     };
   }
 
-  // ==========================================
-  // 2. 超高速スーパー追跡車 (V12 Phantom)
-  // ==========================================
+  // =========================================================================
+  // 2. V12 PHANTOM (エキゾチック・スーパーパースート)
+  // =========================================================================
   createSupercar() {
     const root = new THREE.Group();
     const parts = {};
+    const wheels = [];
 
-    // 超低重心エアロボディ
-    const bodyGeom = new THREE.BoxGeometry(2.15, 0.55, 4.8, 6, 3, 8);
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color: 0xe67e22, // ネオンオレンジ
-      roughness: 0.15,
-      metalness: 0.7
+    // メタリックネオンシアン塗装
+    const bodyPaint = new THREE.MeshStandardMaterial({
+      color: 0x00f0ff,
+      roughness: 0.12,
+      metalness: 0.8
     });
-    const body = new THREE.Mesh(bodyGeom, bodyMat);
-    body.position.y = 0.48;
+    const carbonMat = new THREE.MeshStandardMaterial({
+      color: 0x111111,
+      roughness: 0.4,
+      metalness: 0.6
+    });
+
+    // 1. 低重心ウェッジシェイプ・ボディ
+    const bodyGeom = new THREE.BoxGeometry(2.2, 0.52, 4.9, 6, 3, 8);
+    const body = new THREE.Mesh(bodyGeom, bodyPaint);
+    body.position.y = 0.52;
     body.castShadow = true;
     root.add(body);
     this.physics.registerDeformable(body);
     parts.body = body;
 
-    // 低いコクピットガラス
-    const cabinGeom = new THREE.BoxGeometry(1.6, 0.45, 2.0, 4, 2, 4);
-    const glassMat = new THREE.MeshPhysicalMaterial({
-      color: 0x050510,
-      transmission: 0.9,
-      roughness: 0.05,
-      metalness: 0.1,
-      transparent: true,
-      opacity: 0.9
-    });
-    const cabin = new THREE.Mesh(cabinGeom, glassMat);
-    cabin.position.set(0, 0.9, -0.1);
+    // 2. キャビン（極限エアロスラント）
+    const cabinGeom = new THREE.BoxGeometry(1.7, 0.52, 2.1, 4, 2, 4);
+    const cabin = new THREE.Mesh(cabinGeom, this.glassMat);
+    cabin.position.set(0, 1.02, -0.15);
     root.add(cabin);
     this.physics.registerDeformable(cabin);
     parts.cabin = cabin;
 
-    // 巨大カーボンGTウィング
-    const wingGeom = new THREE.BoxGeometry(2.2, 0.08, 0.45);
-    const carbonMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.5 });
-    const wing = new THREE.Mesh(wingGeom, carbonMat);
-    wing.position.set(0, 1.25, -2.1);
-    root.add(wing);
-    parts.wing = wing;
+    // 3. カーボンファイバー製大型 GT リアウィング
+    const wingGroup = new THREE.Group();
+    const wingBlade = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.06, 0.45), carbonMat);
+    wingBlade.position.y = 0.42;
+    wingGroup.add(wingBlade);
+    const wingStayL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.15), carbonMat);
+    wingStayL.position.set(-0.7, 0.21, 0);
+    wingGroup.add(wingStayL);
+    const wingStayR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.15), carbonMat);
+    wingStayR.position.set(0.7, 0.21, 0);
+    wingGroup.add(wingStayR);
+    wingGroup.position.set(0, 0.82, -2.25);
+    root.add(wingGroup);
+    parts.rearWing = wingGroup;
 
-    // フロントカーボンスプリッター
-    const splitterGeom = new THREE.BoxGeometry(2.2, 0.08, 0.6);
-    const splitter = new THREE.Mesh(splitterGeom, carbonMat);
-    splitter.position.set(0, 0.22, 2.3);
+    // 4. フロントエアロディフューザー＆スプリッター
+    const splitter = new THREE.Mesh(new THREE.BoxGeometry(2.25, 0.08, 0.6), carbonMat);
+    splitter.position.set(0, 0.32, 2.4);
     root.add(splitter);
-    parts.splitter = splitter;
+    parts.frontBumper = splitter;
 
-    // レース用ワイドホイール
-    const wheels = [];
-    const wPositions = [
-      [-1.02, 0.38, 1.5],
-      [1.02, 0.38, 1.5],
-      [-1.04, 0.42, -1.4],
-      [1.04, 0.42, -1.4]
+    // 5. LED スリットヘッドライト & テールバー
+    const hlL = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.08, 0.08), this.headlightMat);
+    hlL.position.set(-0.8, 0.58, 2.45);
+    root.add(hlL);
+    const hlR = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.08, 0.08), this.headlightMat);
+    hlR.position.set(0.8, 0.58, 2.45);
+    root.add(hlR);
+
+    const tl = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.08, 0.08), this.taillightMat);
+    tl.position.set(0, 0.65, -2.46);
+    root.add(tl);
+
+    // 6. デュアルチタンエキゾースト（排気口）
+    const exL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.3, 8), this.chromeMat);
+    exL.rotateX(Math.PI / 2);
+    exL.position.set(-0.35, 0.45, -2.48);
+    root.add(exL);
+    const exR = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.3, 8), this.chromeMat);
+    exR.rotateX(Math.PI / 2);
+    exR.position.set(0.35, 0.45, -2.48);
+    root.add(exR);
+
+    // 7. ゴールド鍛造ホイール（4輪）
+    const wheelPositions = [
+      [-1.08, 0.42, 1.45],
+      [1.08, 0.42, 1.45],
+      [-1.12, 0.45, -1.45],
+      [1.12, 0.45, -1.45]
     ];
-    wPositions.forEach((pos, idx) => {
-      const radius = idx >= 2 ? 0.42 : 0.38;
-      const wheel = this.createWheel(radius, 0.34);
+    wheelPositions.forEach((pos, idx) => {
+      const radius = idx >= 2 ? 0.45 : 0.42;
+      const wheel = this.createDetailedWheel(radius, 0.36, 0xdfb040);
       wheel.position.set(...pos);
       root.add(wheel);
       wheels.push(wheel);
     });
 
     return {
-      type: 'supercar',
-      name: 'V12 PHANTOM SUPER-PURSUIT',
       root,
       parts,
       wheels,
+      name: 'V12 PHANTOM SUPER-PURSUIT',
       stats: {
-        mass: 1480,
         maxSpeed: 330,
-        accel: 38,
+        accel: 24.0,
         handling: 4.2,
-        ramPower: 0.9,
+        armor: 80,
         integrity: 80,
-        maxIntegrity: 80,
-        specialName: 'TWIN-TURBO NITRO BLOW'
+        ramPower: 0.95
       }
     };
   }
 
-  // ==========================================
-  // 3. 重装甲タクティカルSUV (Titan Heavy 4x4)
-  // ==========================================
+  // =========================================================================
+  // 3. TITAN 4x4 (重装甲タクティカル SUV)
+  // =========================================================================
   createHeavySUV() {
     const root = new THREE.Group();
     const parts = {};
+    const wheels = [];
 
-    // 巨大マッシブボディ
-    const bodyGeom = new THREE.BoxGeometry(2.35, 1.15, 5.0, 6, 4, 8);
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color: 0x222629, // ガンメタルアーマー
-      roughness: 0.4,
+    const armorPaint = new THREE.MeshStandardMaterial({
+      color: 0x1a2634,
+      roughness: 0.45,
       metalness: 0.5
     });
-    const body = new THREE.Mesh(bodyGeom, bodyMat);
-    body.position.y = 1.05;
+
+    // 1. 巨大ハイリフト・アーマードボディ
+    const bodyGeom = new THREE.BoxGeometry(2.4, 1.15, 5.2, 6, 4, 8);
+    const body = new THREE.Mesh(bodyGeom, armorPaint);
+    body.position.y = 1.1;
     body.castShadow = true;
     root.add(body);
     this.physics.registerDeformable(body);
     parts.body = body;
 
-    // 防弾ガラスキャビン
-    const cabinGeom = new THREE.BoxGeometry(2.1, 0.85, 3.2, 4, 2, 4);
-    const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x111111, roughness: 0.2, transmission: 0.7 });
-    const cabin = new THREE.Mesh(cabinGeom, glassMat);
-    cabin.position.set(0, 1.9, -0.4);
+    // 2. 防弾ガラス
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.75, 3.2), this.glassMat);
+    cabin.position.set(0, 1.85, -0.4);
     root.add(cabin);
-    this.physics.registerDeformable(cabin);
     parts.cabin = cabin;
 
-    // 巨大アイアンブルバー（重装甲バンパー）
-    const barGeom = new THREE.BoxGeometry(2.4, 0.8, 0.45);
-    const barMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, metalness: 0.9, roughness: 0.2 });
-    const bullBar = new THREE.Mesh(barGeom, barMat);
-    bullBar.position.set(0, 0.9, 2.6);
-    root.add(bullBar);
-    this.physics.registerDeformable(bullBar);
-    parts.bullBar = bullBar;
+    // 3. ルーフラック & 4連オフロードサーチライト
+    const roofRack = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, 2.8), this.chromeMat);
+    roofRack.position.set(0, 2.32, -0.4);
+    root.add(roofRack);
 
-    // 大口径オフロードタイヤ
-    const wheels = [];
-    const wPositions = [
-      [-1.15, 0.6, 1.6],
-      [1.15, 0.6, 1.6],
-      [-1.15, 0.6, -1.6],
-      [1.15, 0.6, -1.6]
+    for (let i = -1.5; i <= 1.5; i += 1) {
+      const spot = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.15, 12), this.headlightMat);
+      spot.rotateX(Math.PI / 2);
+      spot.position.set(i * 0.45, 2.45, 1.0);
+      root.add(spot);
+    }
+
+    // 4. 極厚アイアンブルバー（衝撃破壊）
+    const ramBar = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.7, 0.4, 4, 2, 2), this.chromeMat);
+    ramBar.position.set(0, 0.85, 2.75);
+    root.add(ramBar);
+    this.physics.registerDeformable(ramBar);
+    parts.frontBumper = ramBar;
+
+    // 5. 特大オフロードブロックタイヤ（4輪）
+    const wheelPositions = [
+      [-1.25, 0.58, 1.6],
+      [1.25, 0.58, 1.6],
+      [-1.25, 0.58, -1.6],
+      [1.25, 0.58, -1.6]
     ];
-    wPositions.forEach(pos => {
-      const wheel = this.createWheel(0.6, 0.42);
+    wheelPositions.forEach((pos) => {
+      const wheel = this.createDetailedWheel(0.58, 0.42, 0x222222);
       wheel.position.set(...pos);
       root.add(wheel);
       wheels.push(wheel);
     });
 
     return {
-      type: 'suv',
-      name: 'TITAN HEAVY 4x4 ARMORED',
       root,
       parts,
       wheels,
+      name: 'TITAN HEAVY 4x4 ARMORED',
       stats: {
-        mass: 3400,
         maxSpeed: 215,
-        accel: 24,
+        accel: 15.0,
         handling: 2.8,
-        ramPower: 2.1,
+        armor: 180,
         integrity: 180,
-        maxIntegrity: 180,
-        specialName: 'IRON CLAD IMPACT RAM'
+        ramPower: 2.1
       }
     };
   }
 
-  // ==========================================
-  // 4. 特装装甲突破機 (Rhino Ram Juggernaut)
-  // ==========================================
+  // =========================================================================
+  // 4. RHINO RAM (特装排土板ジャガーノート)
+  // =========================================================================
   createRhinoRam() {
     const root = new THREE.Group();
     const parts = {};
+    const wheels = [];
 
-    // 超重量級フレーム
-    const bodyGeom = new THREE.BoxGeometry(2.5, 1.4, 5.6, 6, 4, 8);
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color: 0x1a252f, // ミリタリーディープネイビー
-      roughness: 0.5,
-      metalness: 0.6
+    const heavyPaint = new THREE.MeshStandardMaterial({
+      color: 0x3d352e,
+      roughness: 0.6,
+      metalness: 0.4
     });
-    const body = new THREE.Mesh(bodyGeom, bodyMat);
-    body.position.y = 1.15;
+
+    // 1. 超重量級フレーム
+    const bodyGeom = new THREE.BoxGeometry(2.6, 1.3, 5.6, 6, 4, 8);
+    const body = new THREE.Mesh(bodyGeom, heavyPaint);
+    body.position.y = 1.25;
     body.castShadow = true;
     root.add(body);
     this.physics.registerDeformable(body);
     parts.body = body;
 
-    // 特殊排土板（鋭角V字プラウ - トラックを吹き飛ばす）
-    const plowGeom = new THREE.CylinderGeometry(0.1, 1.4, 2.7, 4);
-    plowGeom.rotateY(Math.PI / 4);
-    const plowMat = new THREE.MeshStandardMaterial({ color: 0x881111, metalness: 0.9, roughness: 0.2 });
-    const plow = new THREE.Mesh(plowGeom, plowMat);
-    plow.position.set(0, 0.85, 3.1);
-    plow.scale.set(1.1, 1.0, 1.4);
-    root.add(plow);
-    this.physics.registerDeformable(plow);
-    parts.plow = plow;
+    // 2. 鋭角V字排土板（Plow Wedge - トラックの車軸を一撃粉砕）
+    const plowGroup = new THREE.Group();
+    const plowL = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.1, 0.25), this.chromeMat);
+    plowL.position.set(-0.75, 0.55, 0.6);
+    plowL.rotation.y = -0.55;
+    plowGroup.add(plowL);
 
-    // 巨大タイヤ（6輪）
-    const wheels = [];
-    const wPositions = [
-      [-1.25, 0.65, 1.9],
-      [1.25, 0.65, 1.9],
-      [-1.25, 0.65, -0.8],
-      [1.25, 0.65, -0.8],
-      [-1.25, 0.65, -2.1],
-      [1.25, 0.65, -2.1]
+    const plowR = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.1, 0.25), this.chromeMat);
+    plowR.position.set(0.75, 0.55, 0.6);
+    plowR.rotation.y = 0.55;
+    plowGroup.add(plowR);
+
+    plowGroup.position.set(0, 0.4, 2.9);
+    root.add(plowGroup);
+    parts.plow = plowGroup;
+
+    // 3. 6輪の巨大ヘビータスクタイヤ
+    const wheelPositions = [
+      [-1.35, 0.65, 1.8],
+      [1.35, 0.65, 1.8],
+      [-1.35, 0.65, -0.4],
+      [1.35, 0.65, -0.4],
+      [-1.35, 0.65, -2.1],
+      [1.35, 0.65, -2.1]
     ];
-    wPositions.forEach(pos => {
-      const wheel = this.createWheel(0.65, 0.45);
+    wheelPositions.forEach((pos) => {
+      const wheel = this.createDetailedWheel(0.65, 0.45, 0x111111);
       wheel.position.set(...pos);
       root.add(wheel);
       wheels.push(wheel);
     });
 
     return {
-      type: 'rhino',
-      name: 'RHINO RAM JUGGERNAUT',
       root,
       parts,
       wheels,
+      name: 'RHINO RAM JUGGERNAUT',
       stats: {
-        mass: 6500,
         maxSpeed: 190,
-        accel: 22,
+        accel: 13.0,
         handling: 2.3,
-        ramPower: 3.5,
+        armor: 260,
         integrity: 260,
-        maxIntegrity: 260,
-        specialName: 'KINETIC CRUSH BREAKER'
+        ramPower: 3.5
       }
     };
   }
 
-  // ==========================================
-  // 5. 標的1: 超大型18輪連結メガトラック (18-Wheeler Tanker/Hauler)
-  // ==========================================
+  // =========================================================================
+  // 5. 18-WHEELER MEGA HAULER (アメリカン18輪大型メガトラック)
+  // =========================================================================
   create18Wheeler() {
     const root = new THREE.Group();
     const parts = {};
+    const wheels = [];
 
-    // A. 前部トラクターキャブ
-    const cabGroup = new THREE.Group();
-    root.add(cabGroup);
-
-    // キャブメインボディ（ロングノーズ）
-    const cabGeom = new THREE.BoxGeometry(2.6, 2.2, 5.2, 6, 4, 8);
-    const cabMat = new THREE.MeshStandardMaterial({
-      color: 0xb31313, // 鮮烈なクリムゾンレッド
-      roughness: 0.25,
-      metalness: 0.5
+    // トラクターキャブ塗装（レッドメタリック）
+    const cabPaint = new THREE.MeshStandardMaterial({
+      color: 0xaa1122,
+      roughness: 0.2,
+      metalness: 0.7
     });
-    const cab = new THREE.Mesh(cabGeom, cabMat);
-    cab.position.set(0, 1.7, 4.0);
+    // コンテナ塗装（シルバー波板ステンレス）
+    const trailerPaint = new THREE.MeshStandardMaterial({
+      color: 0xb5bec8,
+      roughness: 0.35,
+      metalness: 0.6
+    });
+
+    // --- A. トラクターヘッド (Tractor Cab) ---
+    const cabGroup = new THREE.Group();
+
+    // 1. エンジンノーズ（Long-Nose Hood）
+    const noseGeom = new THREE.BoxGeometry(2.3, 1.4, 2.8, 6, 4, 6);
+    const nose = new THREE.Mesh(noseGeom, cabPaint);
+    nose.position.set(0, 1.35, 4.4);
+    nose.castShadow = true;
+    cabGroup.add(nose);
+    this.physics.registerDeformable(nose);
+    parts.cabNose = nose;
+
+    // 2. 巨大クロームグリル
+    const grilGeom = new THREE.BoxGeometry(2.1, 1.25, 0.25);
+    const grill = new THREE.Mesh(grilGeom, this.chromeMat);
+    grill.position.set(0, 1.35, 5.82);
+    cabGroup.add(grill);
+    parts.frontGrill = grill;
+
+    // 3. キャビン＆スリーパー (Sleeper Cab)
+    const cabGeom = new THREE.BoxGeometry(2.45, 2.3, 3.2, 6, 5, 6);
+    const cab = new THREE.Mesh(cabGeom, cabPaint);
+    cab.position.set(0, 2.1, 1.6);
     cab.castShadow = true;
     cabGroup.add(cab);
     this.physics.registerDeformable(cab);
     parts.cab = cab;
 
-    // 巨大クロームフロントグリル（直撃ターゲット）
-    const grilGeom = new THREE.BoxGeometry(2.2, 1.6, 0.35, 4, 4, 2);
-    const chromeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.95, roughness: 0.1 });
-    const grille = new THREE.Mesh(grilGeom, chromeMat);
-    grille.position.set(0, 1.6, 6.7);
-    cabGroup.add(grille);
-    this.physics.registerDeformable(grille);
-    parts.grille = grille;
+    // ウィンドウ（フロント＆サイド）
+    const windshield = new THREE.Mesh(new THREE.BoxGeometry(2.35, 0.85, 0.1), this.glassMat);
+    windshield.position.set(0, 2.4, 3.22);
+    cabGroup.add(windshield);
 
-    // 前部巨大バンパー
-    const bumperGeom = new THREE.BoxGeometry(2.7, 0.6, 0.4, 4, 2, 2);
-    const bumper = new THREE.Mesh(bumperGeom, chromeMat);
-    bumper.position.set(0, 0.65, 6.8);
+    // 4. 直立デュアルクローム煙突マフラー (Twin Exhaust Stacks)
+    const exhaustL = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 3.6, 12), this.chromeMat);
+    exhaustL.position.set(-1.3, 2.8, 0.2);
+    cabGroup.add(exhaustL);
+    parts.exhaustL = exhaustL;
+
+    const exhaustR = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 3.6, 12), this.chromeMat);
+    exhaustR.position.set(1.3, 2.8, 0.2);
+    cabGroup.add(exhaustR);
+    parts.exhaustR = exhaustR;
+
+    // 5. クロームフロントバンパー
+    const bumper = new THREE.Mesh(new THREE.BoxGeometry(2.55, 0.55, 0.4), this.chromeMat);
+    bumper.position.set(0, 0.65, 5.85);
     cabGroup.add(bumper);
-    this.physics.registerDeformable(bumper);
     parts.frontBumper = bumper;
 
-    // 垂直煙突マフラー（2本）
-    const pipeGeom = new THREE.CylinderGeometry(0.12, 0.12, 3.2, 8);
-    const pipeL = new THREE.Mesh(pipeGeom, chromeMat);
-    pipeL.position.set(-1.25, 2.6, 2.2);
-    cabGroup.add(pipeL);
-    parts.pipeL = pipeL;
-    const pipeR = new THREE.Mesh(pipeGeom, chromeMat);
-    pipeR.position.set(1.25, 2.6, 2.2);
-    cabGroup.add(pipeR);
-    parts.pipeR = pipeR;
-
-    // 左右サイド燃料タンク（爆発部位）
-    const tankGeom = new THREE.CylinderGeometry(0.42, 0.42, 2.2, 12);
-    tankGeom.rotateX(Math.PI / 2);
-    const tankL = new THREE.Mesh(tankGeom, chromeMat);
-    tankL.position.set(-1.3, 0.65, 3.8);
-    cabGroup.add(tankL);
-    parts.tankL = tankL;
-    const tankR = new THREE.Mesh(tankGeom, chromeMat);
-    tankR.position.set(1.3, 0.65, 3.8);
-    cabGroup.add(tankR);
-    parts.tankR = tankR;
-
-    // B. 後部巨大トレーラーコンテナ
-    const trailerGroup = new THREE.Group();
-    trailerGroup.position.set(0, 0, -2.5);
-    root.add(trailerGroup);
-
-    // 巨大コンテナボックス
-    const contGeom = new THREE.BoxGeometry(2.7, 2.9, 11.5, 6, 4, 12);
-    const contMat = new THREE.MeshStandardMaterial({
-      color: 0xdddddd,
-      roughness: 0.4,
-      metalness: 0.2
+    // 6. トラクター側ホイール（前輪2輪 ＋ 後輪ダブルタイヤ4輪×2＝合計10輪）
+    const tractorWheelPos = [
+      [-1.15, 0.58, 4.2],  // 前左
+      [1.15, 0.58, 4.2],   // 前右
+      [-1.25, 0.58, 0.6],  // 駆動輪中左
+      [1.25, 0.58, 0.6],   // 駆動輪中右
+      [-1.25, 0.58, -0.7], // 駆動輪後左
+      [1.25, 0.58, -0.7]   // 駆動輪後右
+    ];
+    tractorWheelPos.forEach((pos) => {
+      const wheel = this.createDetailedWheel(0.58, 0.38, 0xdddddd);
+      wheel.position.set(...pos);
+      cabGroup.add(wheel);
+      wheels.push(wheel);
     });
-    const container = new THREE.Mesh(contGeom, contMat);
-    container.position.set(0, 2.2, -4.5);
+
+    root.add(cabGroup);
+
+    // --- B. 連結コンテナトレーラー (53ft Mega Container) ---
+    const trailerGroup = new THREE.Group();
+
+    // 1. メインコンテナボディ (巨大な波板ステンレス箱)
+    const contGeom = new THREE.BoxGeometry(2.6, 3.0, 11.5, 6, 6, 14);
+    const container = new THREE.Mesh(contGeom, trailerPaint);
+    container.position.set(0, 2.65, -5.5);
     container.castShadow = true;
     trailerGroup.add(container);
     this.physics.registerDeformable(container);
     parts.container = container;
 
-    // コンテナリアドア
-    const doorGeom = new THREE.BoxGeometry(2.6, 2.7, 0.15);
-    const doorMat = new THREE.MeshStandardMaterial({ color: 0x992222, metalness: 0.6, roughness: 0.3 });
-    const rearDoor = new THREE.Mesh(doorGeom, doorMat);
-    rearDoor.position.set(0, 2.2, -10.3);
-    trailerGroup.add(rearDoor);
-    parts.rearDoor = rearDoor;
+    // 2. リア観音開きドア
+    const doorL = new THREE.Mesh(new THREE.BoxGeometry(1.25, 2.8, 0.1), this.chromeMat);
+    doorL.position.set(-0.65, 2.65, -11.26);
+    trailerGroup.add(doorL);
+    parts.rearDoor = doorL;
 
-    // 18輪タイヤ配置
-    const wheels = [];
-    // キャブ操舵輪（2輪）
-    [[-1.2, 0.55, 5.6], [1.2, 0.55, 5.6]].forEach(p => {
-      const w = this.createWheel(0.55, 0.38);
-      w.position.set(...p);
-      cabGroup.add(w);
-      wheels.push(w);
+    const doorR = new THREE.Mesh(new THREE.BoxGeometry(1.25, 2.8, 0.1), this.chromeMat);
+    doorR.position.set(0.65, 2.65, -11.26);
+    trailerGroup.add(doorR);
+
+    // 3. トレーラーホイール（後部2軸ダブルタイヤ＝8輪）
+    const trailerWheelPos = [
+      [-1.25, 0.58, -8.8],
+      [1.25, 0.58, -8.8],
+      [-1.25, 0.58, -10.2],
+      [1.25, 0.58, -10.2]
+    ];
+    trailerWheelPos.forEach((pos) => {
+      const wheel = this.createDetailedWheel(0.58, 0.42, 0xdddddd);
+      wheel.position.set(...pos);
+      trailerGroup.add(wheel);
+      wheels.push(wheel);
     });
-    // キャブ駆動後輪（左右ダブル × 2軸 = 8輪）
-    [-1.25, -1.05, 1.05, 1.25].forEach(x => {
-      [2.5, 1.2].forEach(z => {
-        const w = this.createWheel(0.55, 0.32);
-        w.position.set(x, 0.55, z);
-        cabGroup.add(w);
-        wheels.push(w);
-      });
-    });
-    // トレーラー後輪（左右ダブル × 2軸 = 8輪）
-    [-1.25, -1.05, 1.05, 1.25].forEach(x => {
-      [-8.0, -9.4].forEach(z => {
-        const w = this.createWheel(0.55, 0.32);
-        w.position.set(x, 0.55, z);
-        trailerGroup.add(w);
-        wheels.push(w);
-      });
-    });
+
+    root.add(trailerGroup);
 
     return {
-      type: 'truck',
-      name: 'RAMPAGING 18-WHEELER MEGA HAULER',
       root,
-      cabGroup,
-      trailerGroup,
       parts,
       wheels,
+      trailerGroup,
+      name: '18-WHEELER MEGA HAULER',
       stats: {
-        mass: 38000,
         speed: 135,
         integrity: 1000,
         maxIntegrity: 1000,
-        engineHp: 100,
-        tiresHp: 100,
-        status: 'RAMPAGING AT HIGH SPEED'
+        mass: 38000
       }
     };
   }
 
-  // ==========================================
-  // 6. 標的2: 暴走2階建て長距離バス (Twin-Deck Wild Bus)
-  // ==========================================
+  // =========================================================================
+  // 6. TWIN-DECK WILD BUS (2階建て暴走高速バス)
+  // =========================================================================
   createWildBus() {
     const root = new THREE.Group();
     const parts = {};
+    const wheels = [];
 
-    // 巨大2階建て車体（高重心）
-    const bodyGeom = new THREE.BoxGeometry(2.7, 3.6, 12.0, 6, 6, 14);
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color: 0x16a085, // ティールグリーン
-      roughness: 0.3,
-      metalness: 0.4
+    const busPaint = new THREE.MeshStandardMaterial({
+      color: 0x0055cc,
+      roughness: 0.25,
+      metalness: 0.5
     });
-    const body = new THREE.Mesh(bodyGeom, bodyMat);
-    body.position.set(0, 2.3, 0);
+
+    // 1. 2階建て巨大モノコックボディ
+    const bodyGeom = new THREE.BoxGeometry(2.6, 3.8, 12.0, 6, 6, 12);
+    const body = new THREE.Mesh(bodyGeom, busPaint);
+    body.position.y = 2.4;
     body.castShadow = true;
     root.add(body);
     this.physics.registerDeformable(body);
     parts.body = body;
 
-    // 1階＆2階の長大な連続窓ガラス
-    const glassMat = new THREE.MeshPhysicalMaterial({
-      color: 0x0a1520,
-      transmission: 0.75,
-      roughness: 0.1,
-      metalness: 0.2,
-      transparent: true,
-      opacity: 0.85
-    });
-    const win1 = new THREE.Mesh(new THREE.BoxGeometry(2.74, 0.85, 9.5), glassMat);
-    win1.position.set(0, 1.8, 0.2);
-    root.add(win1);
-    parts.window1 = win1;
+    // 2. 2階パノラマウィンドウ & 1階サイドウィンドウ
+    const winDeck2 = new THREE.Mesh(new THREE.BoxGeometry(2.64, 0.95, 11.2), this.glassMat);
+    winDeck2.position.set(0, 3.3, 0.2);
+    root.add(winDeck2);
 
-    const win2 = new THREE.Mesh(new THREE.BoxGeometry(2.74, 0.85, 9.5), glassMat);
-    win2.position.set(0, 3.0, 0.2);
-    root.add(win2);
-    parts.window2 = win2;
+    const winDeck1 = new THREE.Mesh(new THREE.BoxGeometry(2.64, 0.85, 8.5), this.glassMat);
+    winDeck1.position.set(0, 1.9, -1.0);
+    root.add(winDeck1);
 
-    // 前面巨大ガラス
-    const frontWindshield = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.0, 0.2), glassMat);
-    frontWindshield.position.set(0, 2.5, 6.01);
-    root.add(frontWindshield);
-    parts.frontWindshield = frontWindshield;
-
-    // バス用大型タイヤ（3軸 8輪）
-    const wheels = [];
-    [[-1.25, 0.55, 4.6], [1.25, 0.55, 4.6]].forEach(p => {
-      const w = this.createWheel(0.55, 0.38);
-      w.position.set(...p);
-      root.add(w);
-      wheels.push(w);
-    });
-    [-1.25, 1.25].forEach(x => {
-      [-3.4, -4.8].forEach(z => {
-        const w = this.createWheel(0.55, 0.38);
-        w.position.set(x, 0.55, z);
-        root.add(w);
-        wheels.push(w);
-      });
+    // 3. 6輪の大型バスタイヤ
+    const wheelPositions = [
+      [-1.25, 0.58, 4.2],
+      [1.25, 0.58, 4.2],
+      [-1.25, 0.58, -3.2],
+      [1.25, 0.58, -3.2],
+      [-1.25, 0.58, -4.6],
+      [1.25, 0.58, -4.6]
+    ];
+    wheelPositions.forEach((pos) => {
+      const wheel = this.createDetailedWheel(0.58, 0.38, 0xcccccc);
+      wheel.position.set(...pos);
+      root.add(wheel);
+      wheels.push(wheel);
     });
 
     return {
-      type: 'bus',
-      name: 'OUT-OF-CONTROL TWIN-DECK BUS',
       root,
       parts,
       wheels,
+      name: 'TWIN-DECK WILD BUS',
       stats: {
-        mass: 22000,
         speed: 155,
         integrity: 850,
         maxIntegrity: 850,
-        engineHp: 100,
-        tiresHp: 100,
-        status: 'ERRATIC DRIVING / HIGHSPEED'
+        mass: 22000
       }
     };
   }
 
-  // ==========================================
-  // 7. 標的3: 重装甲メガクラッシャー (Armored Mega-Crusher)
-  // ==========================================
+  // =========================================================================
+  // 7. ARMORED MEGA-CRUSHER (超重装甲クラッシャー)
+  // =========================================================================
   createArmoredCrusher() {
     const root = new THREE.Group();
     const parts = {};
+    const wheels = [];
 
-    // 超重装甲シャーシ
-    const bodyGeom = new THREE.BoxGeometry(3.2, 2.6, 9.0, 6, 4, 10);
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color: 0x332a15, // 錆びた装甲鋼板
-      roughness: 0.6,
-      metalness: 0.7
+    const armorPaint = new THREE.MeshStandardMaterial({
+      color: 0x445522,
+      roughness: 0.5,
+      metalness: 0.6
     });
-    const body = new THREE.Mesh(bodyGeom, bodyMat);
-    body.position.set(0, 2.0, 0);
+
+    // 1. 超重量級要塞ボディ
+    const bodyGeom = new THREE.BoxGeometry(3.2, 2.2, 7.5, 6, 4, 8);
+    const body = new THREE.Mesh(bodyGeom, armorPaint);
+    body.position.y = 1.9;
     body.castShadow = true;
     root.add(body);
     this.physics.registerDeformable(body);
     parts.body = body;
 
-    // 前面スパイク排土板
-    const spikePlowGeom = new THREE.BoxGeometry(3.6, 1.8, 0.8, 4, 2, 2);
-    const spikeMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.2 });
-    const spikePlow = new THREE.Mesh(spikePlowGeom, spikeMat);
-    spikePlow.position.set(0, 1.2, 4.8);
-    root.add(spikePlow);
-    this.physics.registerDeformable(spikePlow);
-    parts.spikePlow = spikePlow;
+    // 2. 前面大型回転スパイクローラー
+    const rollerGeom = new THREE.CylinderGeometry(0.75, 0.75, 3.4, 16);
+    rollerGeom.rotateZ(Math.PI / 2);
+    const roller = new THREE.Mesh(rollerGeom, this.chromeMat);
+    roller.position.set(0, 0.9, 4.4);
+    root.add(roller);
+    parts.roller = roller;
 
-    // 巨大マフラー
-    const pipeGeom = new THREE.CylinderGeometry(0.2, 0.2, 3.0, 8);
-    const pipe = new THREE.Mesh(pipeGeom, spikeMat);
-    pipe.position.set(-1.4, 3.2, -1.0);
-    root.add(pipe);
-    parts.pipe = pipe;
-
-    // 超大径オフロードホイール（8輪）
-    const wheels = [];
-    [-1.5, 1.5].forEach(x => {
-      [3.0, 1.0, -1.2, -3.2].forEach(z => {
-        const w = this.createWheel(0.75, 0.55);
-        w.position.set(x, 0.75, z);
-        root.add(w);
-        wheels.push(w);
-      });
+    // 3. 8輪の超巨大タイヤ
+    const wheelPositions = [
+      [-1.75, 0.75, 2.8],
+      [1.75, 0.75, 2.8],
+      [-1.75, 0.75, 1.0],
+      [1.75, 0.75, 1.0],
+      [-1.75, 0.75, -1.0],
+      [1.75, 0.75, -1.0],
+      [-1.75, 0.75, -2.8],
+      [1.75, 0.75, -2.8]
+    ];
+    wheelPositions.forEach((pos) => {
+      const wheel = this.createDetailedWheel(0.75, 0.55, 0x111111);
+      wheel.position.set(...pos);
+      root.add(wheel);
+      wheels.push(wheel);
     });
 
     return {
-      type: 'crusher',
-      name: 'ARMORED MEGA-CRUSHER JUGGERNAUT',
       root,
       parts,
       wheels,
+      name: 'ARMORED MEGA-CRUSHER',
       stats: {
-        mass: 45000,
-        speed: 130,
+        speed: 110,
         integrity: 1500,
         maxIntegrity: 1500,
-        engineHp: 100,
-        tiresHp: 100,
-        status: 'HEAVY ARMORED / MAXIMUM THREAT'
+        mass: 55000
       }
     };
   }
 
-  // ==========================================
-  // 8. トラフィック一般車（弾き飛ばされるオブジェクト）
-  // ==========================================
-  createCivilianCar(color = 0x3498db) {
+  // =========================================================================
+  // 8. 一般車トラフィック (Civilian Cars)
+  // =========================================================================
+  createCivilianCar(colorHex = 0x2980b9) {
     const root = new THREE.Group();
-    const bodyGeom = new THREE.BoxGeometry(1.9, 0.7, 4.2, 4, 2, 6);
-    const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.4 });
-    const body = new THREE.Mesh(bodyGeom, bodyMat);
-    body.position.y = 0.6;
+    const wheels = [];
+
+    const paint = new THREE.MeshStandardMaterial({
+      color: colorHex,
+      roughness: 0.25,
+      metalness: 0.6
+    });
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.6, 4.2), paint);
+    body.position.y = 0.58;
     body.castShadow = true;
     root.add(body);
-    this.physics.registerDeformable(body);
 
-    const cabinGeom = new THREE.BoxGeometry(1.6, 0.6, 2.2);
-    const cabin = new THREE.Mesh(cabinGeom, new THREE.MeshPhysicalMaterial({ color: 0x111111, transmission: 0.8 }));
-    cabin.position.set(0, 1.15, -0.2);
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.55, 2.1), this.glassMat);
+    cabin.position.set(0, 1.1, -0.2);
     root.add(cabin);
 
-    // 4輪
-    [[-0.9, 0.38, 1.3], [0.9, 0.38, 1.3], [-0.9, 0.38, -1.3], [0.9, 0.38, -1.3]].forEach(p => {
-      const w = this.createWheel(0.38, 0.25);
-      w.position.set(...p);
-      root.add(w);
+    // テールランプ
+    const tl = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.1, 0.05), this.taillightMat);
+    tl.position.set(0, 0.65, -2.12);
+    root.add(tl);
+
+    const wheelPositions = [
+      [-0.95, 0.38, 1.3],
+      [0.95, 0.38, 1.3],
+      [-0.95, 0.38, -1.3],
+      [0.95, 0.38, -1.3]
+    ];
+    wheelPositions.forEach((pos) => {
+      const wheel = this.createDetailedWheel(0.38, 0.26, 0xaaaaaa);
+      wheel.position.set(...pos);
+      root.add(wheel);
+      wheels.push(wheel);
     });
 
     return {
       root,
-      body,
-      speed: 70 + Math.random() * 30,
-      mass: 1400,
-      hp: 50
+      wheels,
+      speed: 85 + Math.random() * 25
     };
   }
 }

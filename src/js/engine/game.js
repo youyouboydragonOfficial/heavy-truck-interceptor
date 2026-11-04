@@ -1,3 +1,12 @@
+// =========================================================================
+// HEAVY TRUCK INTERCEPTOR: CRASH PURSUIT
+// HIGH-SPEED DYNAMIC CHASE ENGINE
+// - 完璧な直感ステアリング（左右入力の完全一致）
+// - オートクルーズ & 超高速ニトロ追跡（急停止・スタックの完全根絶）
+// - リアルタイム変形 & パーツ脱落クラッシュ物理
+// - Web Audio シンセサイザー BGM & リアルタイムエンジン音連動
+// =========================================================================
+
 import * as THREE from '../../assets/three.module.js';
 import { PhysicsEngine } from './physics.js';
 import { VehicleFactory } from './vehicles.js';
@@ -32,7 +41,7 @@ export class Game {
 
     // プレイヤー車両
     this.player = null;
-    this.playerSpeed = 0; // km/h
+    this.playerSpeed = 140; // km/h (基本巡航速度)
     this.playerSteer = 0;
     this.playerPos = new THREE.Vector3(0, 0, 0);
     this.playerRotY = 0;
@@ -44,7 +53,7 @@ export class Game {
     // ターゲット大型車両
     this.target = null;
     this.targetSpeed = 135;
-    this.targetPos = new THREE.Vector3(0, 0, 80);
+    this.targetPos = new THREE.Vector3(0, 0, 75);
     this.targetIntegrity = 1000;
     this.targetMaxIntegrity = 1000;
     this.targetSwerveTimer = 0;
@@ -92,12 +101,12 @@ export class Game {
     this.scene = new THREE.Scene();
 
     this.camera = new THREE.PerspectiveCamera(
-      60,
+      62,
       window.innerWidth / window.innerHeight,
       0.1,
-      800
+      900
     );
-    this.camera.position.set(0, 5, -10);
+    this.camera.position.set(0, 4.5, -9);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -125,6 +134,7 @@ export class Game {
 
       if (e.code === 'KeyC') {
         this.cameraMode = (this.cameraMode + 1) % 3;
+        this.showAnnouncement(`CAMERA MODE: ${['CHASE CAM', 'COCKPIT CAM', 'BUMPER CAM'][this.cameraMode]}`);
       }
       if (e.code === 'KeyE') {
         this.triggerSpecialAbility();
@@ -140,6 +150,11 @@ export class Game {
     window.addEventListener('keyup', (e) => {
       this.keys[e.code] = false;
     });
+
+    // ウィンドウフォーカス喪失時のキーリセット
+    window.addEventListener('blur', () => {
+      this.keys = {};
+    });
   }
 
   toggleUltraPhysics() {
@@ -149,7 +164,7 @@ export class Game {
       this.hudPhysicsMode.textContent = this.ultraPhysicsEnabled ? 'ULTRA OVERCLOCK (PC-MELTING)' : 'NORMAL 60FPS';
       this.hudPhysicsMode.style.color = this.ultraPhysicsEnabled ? '#ff0055' : '#00f0ff';
     }
-    this.showAnnouncement(this.ultraPhysicsEnabled ? 'ULTRA PHYSICS ENGINE ENGAGED: MAXIMUM LOAD SIMULATION' : 'PHYSICS ENGINE: OPTIMIZED MODE');
+    this.showAnnouncement(this.ultraPhysicsEnabled ? '⚡ ULTRA PHYSICS ENGAGED: MAXIMUM CPU/GPU DESTRUCTION LOAD' : 'PHYSICS ENGINE: OPTIMIZED 60FPS');
   }
 
   onWindowResize() {
@@ -159,13 +174,14 @@ export class Game {
   }
 
   // =========================================================================
-  // スタート画面 3Dデモプレイ・シネマティックアニメーション (Attract Mode)
+  // デモ画面（Attract Mode: 起動直後から背景で大迫力チェイス爆走）
   // =========================================================================
   setupDemo() {
     this.state = 'MENU';
-    this.clearGame();
+    soundEngine.stopBGM();
+    soundEngine.stopSiren();
 
-    // 選択中のマップをロード
+    this.clearGame();
     this.environment.loadMap(this.selectedMap);
 
     this.demoZ = 0;
@@ -194,7 +210,7 @@ export class Game {
     } else if (type === 'crusher') {
       this.demoTarget = this.vehicleFactory.createArmoredCrusher();
     }
-    this.demoTarget.root.position.set(1.5, 0, this.demoZ + 22);
+    this.demoTarget.root.position.set(-1.2, 0, this.demoZ + 24);
     this.scene.add(this.demoTarget.root);
   }
 
@@ -212,7 +228,7 @@ export class Game {
     } else if (type === 'rhino') {
       this.demoInterceptor = this.vehicleFactory.createRhinoRam();
     }
-    this.demoInterceptor.root.position.set(-1.8, 0, this.demoZ);
+    this.demoInterceptor.root.position.set(1.6, 0, this.demoZ);
     this.scene.add(this.demoInterceptor.root);
   }
 
@@ -228,7 +244,6 @@ export class Game {
     });
   }
 
-  // UIで車両が選択されたときにデモ追跡車を即時更新
   updateDemoVehicle(type) {
     this.selectedVehicleType = type;
     if (this.state === 'MENU') {
@@ -236,7 +251,6 @@ export class Game {
     }
   }
 
-  // UIで標的が選択されたときにデモ標的を即時更新
   updateDemoTarget(type) {
     this.selectedTargetType = type;
     if (this.state === 'MENU') {
@@ -244,7 +258,6 @@ export class Game {
     }
   }
 
-  // UIでマップが選択されたときに環境を即時更新
   updateDemoMap(map) {
     this.selectedMap = map;
     if (this.state === 'MENU') {
@@ -252,84 +265,71 @@ export class Game {
     }
   }
 
-  // メニュー画面の毎フレーム更新（猛スピードチェイス＆体当たり火花＆カメラ旋回）
   updateDemo(dt) {
-    // 時速140kmで前進
-    const speedMs = 39.0;
+    const speedMs = 39.0; // 140 km/h
     this.demoZ += speedMs * dt;
     this.demoTimer += dt;
     this.demoRamTimer += dt;
 
     const baseZ = this.demoZ;
 
-    // 1. 標的車両の走行
+    // 1. 標的トラックの走行
     if (this.demoTarget) {
       const swerve = Math.sin(this.demoTimer * 1.5) * 1.8;
-      this.demoTarget.root.position.set(1.2 + swerve, 0, baseZ + 20);
+      this.demoTarget.root.position.set(-1.0 + swerve, 0, baseZ + 22);
       this.demoTarget.root.rotation.y = Math.cos(this.demoTimer * 1.5) * 0.08;
       if (this.demoTarget.trailerGroup) {
         this.demoTarget.trailerGroup.rotation.y = -Math.cos(this.demoTimer * 1.5) * 0.12;
       }
-      // 車輪回転
       this.demoTarget.wheels.forEach(w => {
         w.rotation.x += speedMs * dt * 2.0;
       });
     }
 
-    // 2. 捜査車両のチェイス＆体当たりタックル
+    // 2. 捜査車両のチェイス＆タックル
     if (this.demoInterceptor) {
-      // 2.2秒ごとにトラックの側面に強烈タックル！
-      let lateralOffset = -2.2;
+      let lateralOffset = 2.0;
       let rotY = 0;
       if (this.demoRamTimer > 2.0) {
-        // 体当たり直撃フェーズ
-        lateralOffset = 0.2;
-        rotY = 0.15;
+        lateralOffset = -0.2;
+        rotY = -0.15;
 
-        // 火花と破片を激しく放出！
+        // 火花と破片を激しく放出
         if (Math.random() < 0.45) {
-          const hitPos = new THREE.Vector3(
-            0.5,
-            1.0,
-            baseZ + 16
-          );
+          const hitPos = new THREE.Vector3(0.2, 1.0, baseZ + 16);
           this.physics.createImpactExplosion(hitPos, new THREE.Vector3(0, 0, speedMs), 1.2);
           if (Math.random() < 0.25) soundEngine.playCrash(0.6);
         }
-
         if (this.demoRamTimer > 2.7) {
           this.demoRamTimer = 0;
         }
       }
 
-      this.demoInterceptor.root.position.set(lateralOffset, 0, baseZ + 14);
+      this.demoInterceptor.root.position.set(lateralOffset, 0, baseZ + 15);
       this.demoInterceptor.root.rotation.y = rotY;
 
-      // 車輪回転
       this.demoInterceptor.wheels.forEach(w => {
         w.rotation.x += speedMs * dt * 2.5;
       });
+
+      // パトカーならサイレン点滅
+      if (this.demoInterceptor.strobeNodes) {
+        const flash = Math.floor(this.demoTimer * 10) % 2 === 0;
+        this.demoInterceptor.strobeNodes.red.color.setHex(flash ? 0xff0033 : 0x220000);
+        this.demoInterceptor.strobeNodes.blue.color.setHex(!flash ? 0x0066ff : 0x001133);
+      }
     }
 
-    // 3. 一般車の走行＆リサイクル
-    this.demoTraffics.forEach(car => {
-      car.root.position.z += (car.speed / 3.6) * dt;
-      if (car.root.position.z < baseZ - 20) {
-        car.root.position.z = baseZ + 120 + Math.random() * 40;
-      }
-    });
-
-    // 4. シネマティックカメラの滑らか旋回
+    // 3. カメラ旋回
     this.demoCamAngle += dt * 0.22;
     const camDist = 18.0;
     const camHeight = 5.2 + Math.sin(this.demoTimer * 0.5) * 1.5;
     const camX = Math.sin(this.demoCamAngle) * camDist;
-    const camZ = baseZ + 16 + Math.cos(this.demoCamAngle) * camDist;
+    const camZ = baseZ + 18 + Math.cos(this.demoCamAngle) * camDist;
 
     this.camera.position.set(camX, camHeight, camZ);
-    this.camera.lookAt(new THREE.Vector3(0, 1.8, baseZ + 18));
+    this.camera.lookAt(new THREE.Vector3(0, 1.8, baseZ + 20));
 
-    // 5. 環境チャンクの循環更新
     this.environment.update(baseZ, dt);
   }
 
@@ -341,10 +341,10 @@ export class Game {
     this.selectedMap = mapType;
     this.selectedTargetType = targetType;
 
-    // 既存クリア
     this.clearGame();
+    this.state = 'PLAYING';
 
-    // 1. 環境・マップ構築
+    // 1. 環境構築
     this.environment.loadMap(mapType);
 
     // 2. プレイヤー車両生成
@@ -361,7 +361,8 @@ export class Game {
     this.player.root.position.copy(this.playerPos);
     this.scene.add(this.player.root);
 
-    this.playerSpeed = 90;
+    // 基本巡航速度 140 km/h（オートクルーズで急停止しない！）
+    this.playerSpeed = 140;
     this.playerIntegrity = this.player.stats.integrity;
     this.nitroFuel = 100;
 
@@ -373,7 +374,7 @@ export class Game {
     } else if (targetType === 'crusher') {
       this.target = this.vehicleFactory.createArmoredCrusher();
     }
-    this.targetPos.set(0, 0, 75);
+    this.targetPos.set(0, 0, 70);
     this.target.root.position.copy(this.targetPos);
     this.scene.add(this.target.root);
 
@@ -385,31 +386,29 @@ export class Game {
       this.hudTargetName.textContent = this.target.name;
     }
 
-    // 4. 一般車トラフィック生成
+    // 4. トラフィック生成
     this.spawnTraffics();
 
-    this.state = 'PLAYING';
-    soundEngine.init();
+    // 5. BGM & 効果音開始
+    soundEngine.ensureContext();
+    soundEngine.startBGM();
     if (vehicleType === 'patrol') {
-      soundEngine.toggleSiren(true);
-    } else {
-      soundEngine.toggleSiren(false);
+      soundEngine.startSiren();
     }
 
-    this.showAnnouncement('INTERCEPTOR DISPATCHED: RAM & DESTROY THE TARGET!');
+    this.showAnnouncement('🚨 INTERCEPT PURSUIT ENGAGED! RAM & STOP THE TARGET!');
   }
 
   spawnTraffics() {
-    this.traffics.forEach(t => this.scene.remove(t.root));
     this.traffics = [];
-
-    const colors = [0x2980b9, 0x8e44ad, 0x27ae60, 0xd35400, 0xbdc3c7];
+    const colors = [0x34495e, 0x9b59b6, 0x1abc9c, 0xe67e22, 0x95a5a6];
     for (let i = 0; i < this.maxTraffic; i++) {
-      const color = colors[i % colors.length];
-      const car = this.vehicleFactory.createCivilianCar(color);
-      const lane = [-6, 0, 6][Math.floor(Math.random() * 3)];
-      const z = 30 + i * 45;
-      car.root.position.set(lane, 0, z);
+      const car = this.vehicleFactory.createCivilianCar(colors[i % colors.length]);
+      car.root.position.set(
+        [-6.5, 0, 6.5][i % 3],
+        0,
+        this.playerPos.z + 50 + i * 45
+      );
       this.scene.add(car.root);
       this.traffics.push(car);
     }
@@ -448,33 +447,32 @@ export class Game {
     if (this.selectedVehicleType === 'patrol') {
       // EMPパルスショック
       if (this.empCooldown <= 0) {
-        this.empCooldown = 10.0;
+        this.empCooldown = 8.0;
         soundEngine.playEMP();
         this.showAnnouncement('⚡ EMP SHOCKWAVE DISCHARGED!');
         this.cameraShake = 0.8;
-        // ターゲットが近くにいれば直撃
         const dist = this.playerPos.distanceTo(this.targetPos);
-        if (dist < 35) {
-          this.targetSpeed = Math.max(30, this.targetSpeed - 45);
-          this.targetIntegrity -= 120;
-          this.physics.createImpactExplosion(this.targetPos, new THREE.Vector3(0, 0, 0), 2.0);
-          this.showAnnouncement('CRITICAL HIT: TARGET SYSTEMS OVERLOADED!');
+        if (dist < 40) {
+          this.targetSpeed = Math.max(40, this.targetSpeed - 50);
+          this.targetIntegrity -= 150;
+          this.physics.createImpactExplosion(this.targetPos, new THREE.Vector3(0, 0, 0), 2.2);
+          this.showAnnouncement('⚡ CRITICAL HIT: TRUCK SYSTEMS OVERLOADED!');
         }
       }
     } else if (this.selectedVehicleType === 'supercar') {
-      // 瞬間ニトロ過給
-      if (this.nitroFuel >= 30) {
-        this.nitroFuel -= 30;
-        this.playerSpeed += 80;
+      // ニトロ過給
+      if (this.nitroFuel >= 25) {
+        this.nitroFuel -= 25;
+        this.playerSpeed += 90;
         soundEngine.playNitro();
-        this.showAnnouncement('🚀 NITRO OVERBOOST ACTIVATED!');
+        this.showAnnouncement('🚀 TWIN-TURBO NITRO BURST!');
         this.cameraShake = 0.6;
       }
     } else if (this.selectedVehicleType === 'suv' || this.selectedVehicleType === 'rhino') {
-      // 重装甲ラムチャージ
-      this.playerSpeed += 50;
+      // 重装甲ラム突進
+      this.playerSpeed += 60;
       soundEngine.playNitro();
-      this.showAnnouncement('🛡️ HEAVY RAM CHARGE ENGAGED!');
+      this.showAnnouncement('🛡️ HEAVY RAM CHARGE ACTIVATED!');
       this.cameraShake = 0.7;
     }
   }
@@ -489,7 +487,7 @@ export class Game {
   loop(now) {
     requestAnimationFrame((t) => this.loop(t));
 
-    const dt = Math.min(0.1, (now - this.lastTime) / 1000);
+    const dt = Math.min(0.08, (now - this.lastTime) / 1000);
     this.lastTime = now;
 
     // FPS計測
@@ -502,7 +500,6 @@ export class Game {
     }
 
     if (this.state === 'MENU') {
-      // メニュー中は大迫力3Dデモチェイスが自動で動く！
       this.updateDemo(dt);
     } else if (this.state === 'PLAYING') {
       this.updatePlayer(dt);
@@ -515,27 +512,30 @@ export class Game {
       this.environment.update(this.playerPos.z, dt);
     }
 
-    // 物理エンジン更新（火花・デブリ・剛体）
     this.physics.update(dt);
-
     this.renderer.render(this.scene, this.camera);
   }
 
-  // --- プレイヤー車両の制御 ---
+  // =========================================================================
+  // プレイヤー操作（左右入力の完全修正・オートクルーズ・滑らかなステアリング）
+  // =========================================================================
   updatePlayer(dt) {
     const stats = this.player.stats;
 
-    // 加速・ブレーキ入力
+    // 1. アクセル・ブレーキ
+    // 基本速度 140km/h をキープ（オートクルーズ）
+    const baseCruiseSpeed = 135;
     let throttle = 0;
-    if (this.keys['KeyW'] || this.keys['ArrowUp']) throttle += 1;
-    if (this.keys['KeyS'] || this.keys['ArrowDown']) throttle -= 1.5;
 
-    // ニトロ
-    if ((this.keys['ShiftLeft'] || this.keys['ShiftRight']) && this.nitroFuel > 0 && throttle > 0) {
+    if (this.keys['KeyW'] || this.keys['ArrowUp']) throttle += 1.0;
+    if (this.keys['KeyS'] || this.keys['ArrowDown']) throttle -= 1.8;
+
+    // ニトロ過給 (Shiftキー)
+    if ((this.keys['ShiftLeft'] || this.keys['ShiftRight']) && this.nitroFuel > 0 && throttle >= 0) {
       this.isNitroActive = true;
-      this.nitroFuel = Math.max(0, this.nitroFuel - 25 * dt);
+      this.nitroFuel = Math.max(0, this.nitroFuel - 20 * dt);
       throttle += 1.8;
-      if (Math.random() < 0.2) soundEngine.playNitro();
+      if (Math.random() < 0.25) soundEngine.playNitro();
     } else {
       this.isNitroActive = false;
       this.nitroFuel = Math.min(100, this.nitroFuel + 8 * dt);
@@ -545,106 +545,114 @@ export class Game {
       this.empCooldown -= dt;
     }
 
-    // スピード更新
-    const targetMaxSpeed = this.isNitroActive ? stats.maxSpeed * 1.35 : stats.maxSpeed;
+    // 速度更新
+    const maxSpeed = this.isNitroActive ? stats.maxSpeed * 1.35 : stats.maxSpeed;
     if (throttle > 0) {
       this.playerSpeed += stats.accel * throttle * dt * 3.6;
-      if (this.playerSpeed > targetMaxSpeed) this.playerSpeed = targetMaxSpeed;
+      if (this.playerSpeed > maxSpeed) this.playerSpeed = maxSpeed;
     } else if (throttle < 0) {
-      this.playerSpeed += stats.accel * throttle * dt * 3.6;
-      if (this.playerSpeed < -30) this.playerSpeed = -30;
+      this.playerSpeed -= 45 * dt * 3.6;
+      if (this.playerSpeed < 60) this.playerSpeed = 60; // ブレーキ時も最低60km/h
     } else {
-      // 惰性減速
-      this.playerSpeed *= Math.pow(0.985, dt * 60);
+      // アクセルオフ時：基本速度 135km/h へ自然収束（急停止しない！）
+      if (this.playerSpeed > baseCruiseSpeed) {
+        this.playerSpeed -= 25 * dt;
+      } else if (this.playerSpeed < baseCruiseSpeed) {
+        this.playerSpeed += 20 * dt;
+      }
     }
 
-    // ステアリング
+    // 2. ステアリング入力（★重要：視覚と100%一致させる★）
+    // Three.js カメラが +Z を見ている場合：
+    // 画面の「左」は +X、画面の「右」は -X
     let steerInput = 0;
-    if (this.keys['KeyA'] || this.keys['ArrowLeft']) steerInput -= 1;
-    if (this.keys['KeyD'] || this.keys['ArrowRight']) steerInput += 1;
+    if (this.keys['KeyA'] || this.keys['ArrowLeft']) {
+      steerInput += 1.0; // 画面の「左」へ！
+    }
+    if (this.keys['KeyD'] || this.keys['ArrowRight']) {
+      steerInput -= 1.0; // 画面の「右」へ！
+    }
 
-    // ハンドブレーキドリフト
+    // ハンドブレーキ急ドリフト (Spaceキー)
     const isHandbrake = this.keys['Space'];
     if (isHandbrake) {
       steerInput *= 1.6;
       this.playerSpeed *= Math.pow(0.97, dt * 60);
-      if (Math.abs(this.playerSpeed) > 40 && Math.random() < 0.3) {
+      if (Math.abs(this.playerSpeed) > 70 && Math.random() < 0.35) {
         soundEngine.playTireScreech();
       }
     }
 
-    this.playerSteer += (steerInput - this.playerSteer) * Math.min(1, 10 * dt);
+    // ステアリングのスムーズ補間
+    this.playerSteer += (steerInput - this.playerSteer) * Math.min(1, 12 * dt);
 
-    // 進行位置更新
+    // 位置更新
     const speedMs = (this.playerSpeed / 3.6);
     this.playerPos.z += speedMs * dt;
-    this.playerPos.x += this.playerSteer * (stats.handling * 3.2) * (speedMs / 25) * dt * 15;
+    this.playerPos.x += this.playerSteer * (stats.handling * 2.8) * dt * 14;
 
-    // ガードレール制限
-    if (this.playerPos.x < -10.5) {
-      this.playerPos.x = -10.5;
-      this.playerSpeed *= 0.85;
-      this.cameraShake = 0.3;
-      soundEngine.playCrash(0.5);
-    } else if (this.playerPos.x > 10.5) {
+    // ガードレール衝突（端で跳ね返り・スタック防止）
+    if (this.playerPos.x > 10.5) {
       this.playerPos.x = 10.5;
-      this.playerSpeed *= 0.85;
-      this.cameraShake = 0.3;
-      soundEngine.playCrash(0.5);
+      this.playerSteer = -0.5;
+      this.cameraShake = 0.35;
+      soundEngine.playCrash(0.6);
+    } else if (this.playerPos.x < -10.5) {
+      this.playerPos.x = -10.5;
+      this.playerSteer = 0.5;
+      this.cameraShake = 0.35;
+      soundEngine.playCrash(0.6);
     }
 
-    // 車両メッシュ姿勢更新
+    // 車両メッシュ姿勢（バンク＆ヨー角）
     this.player.root.position.copy(this.playerPos);
-    this.playerRotY = -this.playerSteer * 0.25;
+    // 左に曲がるときは左を向き、右に曲がるときは右を向く
+    this.playerRotY = this.playerSteer * 0.22;
     this.player.root.rotation.set(
-      (throttle > 0 ? -0.02 : throttle < 0 ? 0.03 : 0),
+      (throttle > 0 ? -0.015 : throttle < 0 ? 0.025 : 0),
       this.playerRotY,
-      -this.playerSteer * 0.08
+      this.playerSteer * 0.08
     );
 
     // 車輪回転
-    const wheelRotSpeed = (speedMs / 0.42) * dt;
+    const wheelRotSpeed = (speedMs / 0.44) * dt;
     this.player.wheels.forEach(w => {
       w.rotation.x += wheelRotSpeed;
     });
 
-    // エンジン音更新
+    // パトカーならサイレン点滅
+    if (this.player.strobeNodes) {
+      const flash = Math.floor(performance.now() / 90) % 2 === 0;
+      this.player.strobeNodes.red.color.setHex(flash ? 0xff0033 : 0x220000);
+      this.player.strobeNodes.blue.color.setHex(!flash ? 0x0066ff : 0x001133);
+    }
+
+    // リアルタイムエンジン音
     soundEngine.updateEngine(this.playerSpeed, stats.maxSpeed, throttle);
   }
 
-  // --- 標的暴走大型車両のAI・挙動 ---
+  // --- 標的大型車両のAI走行 ---
   updateTarget(dt) {
     if (!this.target) return;
 
-    // 暴走速度で直進
-    const speedMs = (this.targetSpeed / 3.6);
-    this.targetPos.z += speedMs * dt;
-
-    // ジグザグ暴走スワーブ
     this.targetSwerveTimer += dt;
-    if (this.targetSwerveTimer > 2.0) {
-      this.targetLateralVel = (Math.random() - 0.5) * 8.0;
-      this.targetSwerveTimer = 0;
-    }
-    this.targetPos.x += this.targetLateralVel * dt;
-    if (this.targetPos.x < -7.5) {
-      this.targetPos.x = -7.5;
-      this.targetLateralVel = Math.abs(this.targetLateralVel);
-    } else if (this.targetPos.x > 7.5) {
-      this.targetPos.x = 7.5;
-      this.targetLateralVel = -Math.abs(this.targetLateralVel);
-    }
+    // 蛇行運転（プレイヤーをブロックしようとする）
+    const targetX = Math.sin(this.targetSwerveTimer * 1.2) * 5.5;
+    this.targetPos.x += (targetX - this.targetPos.x) * dt * 1.5;
+
+    // 前進
+    const targetSpeedMs = (this.targetSpeed / 3.6);
+    this.targetPos.z += targetSpeedMs * dt;
 
     this.target.root.position.copy(this.targetPos);
-    this.target.root.rotation.y = (this.targetLateralVel / 8.0) * 0.1;
+    this.target.root.rotation.y = Math.cos(this.targetSwerveTimer * 1.2) * 0.08;
 
-    // 18輪トラックのトレーラー関節揺動
     if (this.target.trailerGroup) {
-      this.target.trailerGroup.rotation.y = -(this.targetLateralVel / 8.0) * 0.18;
+      this.target.trailerGroup.rotation.y = -Math.cos(this.targetSwerveTimer * 1.2) * 0.12;
     }
 
     // 車輪回転
-    const wheelRotSpeed = (speedMs / 0.55) * dt;
+    const wheelRotSpeed = (targetSpeedMs / 0.58) * dt;
     this.target.wheels.forEach(w => {
       w.rotation.x += wheelRotSpeed;
     });
@@ -655,16 +663,15 @@ export class Game {
     for (let car of this.traffics) {
       car.root.position.z += (car.speed / 3.6) * dt;
 
-      // プレイヤーより遥か後方に過ぎ去ったら前方にリスポーン
+      // 遥か後方に過ぎ去ったら前方にリスポーン
       if (car.root.position.z < this.playerPos.z - 30) {
         car.root.position.z = this.playerPos.z + 180 + Math.random() * 60;
-        car.root.position.x = [-6, 0, 6][Math.floor(Math.random() * 3)];
+        car.root.position.x = [-6.5, 0, 6.5][Math.floor(Math.random() * 3)];
       }
 
-      // トラックが一般車に突っ込む演出
+      // トラックが一般車を豪快に弾き飛ばす
       const distToTruck = car.root.position.distanceTo(this.targetPos);
-      if (distToTruck < 6.5) {
-        // トラックが一般車を弾き飛ばす！
+      if (distToTruck < 6.8) {
         car.root.position.x += (car.root.position.x > this.targetPos.x ? 8 : -8);
         this.physics.createImpactExplosion(car.root.position, new THREE.Vector3(0, 0, 0), 1.5);
         soundEngine.playCrash(1.2);
@@ -673,15 +680,16 @@ export class Game {
     }
   }
 
-  // --- 激突・衝突判定（超リアル物理破壊発動） ---
+  // =========================================================================
+  // 激突・タックル判定（超爽快な連続体当たり・火花・パーツ脱落）
+  // =========================================================================
   checkCollisions() {
     if (!this.player || !this.target) return;
 
-    // プレイヤー vs トラックの衝突判定（AABB / 距離）
     const dx = Math.abs(this.playerPos.x - this.targetPos.x);
     const dz = Math.abs(this.playerPos.z - this.targetPos.z);
 
-    const hitWidth = 2.4;
+    const hitWidth = 2.6;
     const hitLength = 8.5;
 
     if (dx < hitWidth && dz < hitLength) {
@@ -690,29 +698,22 @@ export class Game {
   }
 
   handlePlayerTargetCrash() {
-    const relSpeedKmh = this.playerSpeed - this.targetSpeed;
-    const absRelSpeed = Math.abs(relSpeedKmh);
+    const relSpeedKmh = Math.abs(this.playerSpeed - this.targetSpeed);
+    const impactForce = Math.max(25, (relSpeedKmh + 35) * 1.8 * this.player.stats.ramPower);
+    this.cameraShake = Math.min(2.5, 0.5 + impactForce * 0.02);
 
-    // 衝突衝撃力（Impulse）
-    const impactForce = Math.max(15, absRelSpeed * 2.2 * this.player.stats.ramPower);
-    this.cameraShake = Math.min(2.5, 0.4 + impactForce * 0.02);
+    // 激突音 & ガラス粉砕
+    soundEngine.playCrash(impactForce / 25);
+    if (Math.random() < 0.5) soundEngine.playGlassShatter();
 
-    // サウンド再生
-    soundEngine.playCrash(impactForce / 30);
-    if (Math.random() < 0.6) soundEngine.playGlassShatter();
-
-    // 接触点ワールド座標
+    // 接触点
     const contactPoint = new THREE.Vector3(
       (this.playerPos.x + this.targetPos.x) * 0.5,
-      1.0,
+      1.1,
       (this.playerPos.z + this.targetPos.z) * 0.5
     );
 
-    // 1. リアルタイム頂点メッシュ変形（Soft-body Crumple）
-    if (this.player.parts.body) {
-      const localP = this.player.parts.body.worldToLocal(contactPoint.clone());
-      this.physics.applyMeshDeformation(this.player.parts.body, localP, new THREE.Vector3(0, 0, -1), impactForce, 2.5);
-    }
+    // 1. メッシュ変形 (Soft-Body Crumple)
     if (this.target.parts.cab) {
       const localT = this.target.parts.cab.worldToLocal(contactPoint.clone());
       this.physics.applyMeshDeformation(this.target.parts.cab, localT, new THREE.Vector3(0, 0, 1), impactForce * 1.5, 3.5);
@@ -722,34 +723,30 @@ export class Game {
       this.physics.applyMeshDeformation(this.target.parts.container, localC, new THREE.Vector3(0, 0, 1), impactForce, 3.0);
     }
 
-    // 2. 超密度 破片 & 火花物理爆散
+    // 2. 超密度火花＆破片物理爆散
     this.physics.createImpactExplosion(contactPoint, new THREE.Vector3(0, 0, (this.playerSpeed + this.targetSpeed) / 7.2), impactForce);
 
-    // 3. パーツ脱落物理（バンパー、ボンネット、ドアが吹っ飛ぶ）
-    if (impactForce > 45 && this.player.parts.hood && Math.random() < 0.4) {
-      this.physics.detachPart(this.player, this.player.parts.hood, new THREE.Vector3(0, 0, this.playerSpeed / 3.6), impactForce);
-      delete this.player.parts.hood;
-      this.showAnnouncement('WARNING: HOOD DISLODGED!');
-    }
-    if (impactForce > 60 && this.target.parts.rearDoor && Math.random() < 0.5) {
+    // 3. パーツ脱落（ドアやバンパーが吹き飛ぶ）
+    if (impactForce > 40 && this.target.parts.rearDoor && Math.random() < 0.6) {
       this.physics.detachPart(this.target, this.target.parts.rearDoor, new THREE.Vector3(0, 0, this.targetSpeed / 3.6), impactForce);
       delete this.target.parts.rearDoor;
-      this.showAnnouncement('CRITICAL: TRUCK REAR DOORS BREACHED!');
+      this.showAnnouncement('💥 CRITICAL BREACH: TRUCK CARGO DOORS RIPPED OFF!');
     }
-    if (impactForce > 80 && this.target.parts.frontBumper && Math.random() < 0.5) {
-      this.physics.detachPart(this.target, this.target.parts.frontBumper, new THREE.Vector3(0, 0, this.targetSpeed / 3.6), impactForce);
-      delete this.target.parts.frontBumper;
+    if (impactForce > 65 && this.target.parts.exhaustL && Math.random() < 0.5) {
+      this.physics.detachPart(this.target, this.target.parts.exhaustL, new THREE.Vector3(-2, 4, this.targetSpeed / 3.6), impactForce);
+      delete this.target.parts.exhaustL;
+      this.showAnnouncement('💥 EXHAUST STACK DISLODGED!');
     }
 
-    // 4. ダメージ計算 & スコア
-    const damageToTarget = Math.round(impactForce * 1.8);
-    const damageToPlayer = Math.round(impactForce * (0.8 / this.player.stats.ramPower));
+    // 4. ダメージ計算
+    const damageToTarget = Math.round(impactForce * 2.2);
+    const damageToPlayer = Math.round(impactForce * (0.5 / this.player.stats.ramPower));
 
     this.targetIntegrity = Math.max(0, this.targetIntegrity - damageToTarget);
     this.playerIntegrity = Math.max(0, this.playerIntegrity - damageToPlayer);
 
     // トラックの速度低下
-    this.targetSpeed = Math.max(40, this.targetSpeed - (damageToTarget * 0.08));
+    this.targetSpeed = Math.max(40, this.targetSpeed - (damageToTarget * 0.06));
 
     // スコア加算
     this.totalScore += damageToTarget * 10;
@@ -759,15 +756,11 @@ export class Game {
       setTimeout(() => this.hudImpactScore.classList.remove('flash'), 600);
     }
 
-    // 反動による押し出し（Kinetic Repulsion）
-    if (this.playerPos.z < this.targetPos.z) {
-      this.playerPos.z -= 1.8;
-      this.playerSpeed = Math.max(30, this.playerSpeed * 0.65);
-    } else {
-      this.playerPos.z += 1.8;
-      this.playerSpeed = Math.max(this.playerSpeed, this.targetSpeed + 10);
-    }
-    this.playerPos.x += (this.playerPos.x > this.targetPos.x ? 1.5 : -1.5);
+    // ★重要：止まらずにガリガリ押し合う迫力物理★
+    // 速度をゼロに落とさず、最低130km/hをキープ！
+    this.playerSpeed = Math.max(130, this.playerSpeed * 0.92);
+    // 接触反発で横へスライド
+    this.playerPos.x += (this.playerPos.x > this.targetPos.x ? 0.8 : -0.8);
   }
 
   // --- カメラワーク ---
@@ -778,34 +771,34 @@ export class Game {
     let lookTarget = new THREE.Vector3();
 
     if (this.cameraMode === 0) {
-      // 迫力のチェイスカム（Chase Cam）
+      // 迫力の追跡チェイスカム
       targetCamPos.set(
-        this.playerPos.x * 0.6,
+        this.playerPos.x * 0.65,
         this.playerPos.y + 3.8,
         this.playerPos.z - 8.5
       );
       lookTarget.set(
-        this.playerPos.x * 0.2,
-        this.playerPos.y + 1.2,
-        this.playerPos.z + 15
+        this.playerPos.x * 0.3,
+        this.playerPos.y + 1.3,
+        this.playerPos.z + 18
       );
     } else if (this.cameraMode === 1) {
-      // クローズアップ・ドライバーカム
+      // コックピット・クローズアップカム
       targetCamPos.set(
         this.playerPos.x,
-        this.playerPos.y + 1.6,
+        this.playerPos.y + 1.5,
         this.playerPos.z - 0.2
       );
       lookTarget.set(
         this.playerPos.x,
-        this.playerPos.y + 1.5,
-        this.playerPos.z + 25
+        this.playerPos.y + 1.4,
+        this.playerPos.z + 28
       );
     } else {
-      // フロントバンパー・激突直前シネマティックカム
+      // バンパーシネマティックカム
       targetCamPos.set(
         this.playerPos.x,
-        this.playerPos.y + 0.8,
+        this.playerPos.y + 0.75,
         this.playerPos.z + 2.5
       );
       lookTarget.set(
@@ -815,94 +808,100 @@ export class Game {
       );
     }
 
-    // カメラシェイク（衝突時・ニトロ時）
+    // ニトロ加速時のダイナミック FOV 演出（広角化でスピード感爆発）
+    const targetFOV = this.isNitroActive ? 74 : 62;
+    this.camera.fov += (targetFOV - this.camera.fov) * dt * 6;
+    this.camera.updateProjectionMatrix();
+
+    // カメラシェイク
     if (this.cameraShake > 0) {
       targetCamPos.x += (Math.random() - 0.5) * this.cameraShake;
       targetCamPos.y += (Math.random() - 0.5) * this.cameraShake;
-      this.cameraShake = Math.max(0, this.cameraShake - 3.0 * dt);
+      this.cameraShake = Math.max(0, this.cameraShake - 3.5 * dt);
     }
 
-    this.camera.position.lerp(targetCamPos, 0.15);
+    this.camera.position.lerp(targetCamPos, 0.18);
     this.camera.lookAt(lookTarget);
   }
 
   // --- HUD表示更新 ---
   updateHUD() {
     if (this.hudSpeed) {
-      this.hudSpeed.textContent = Math.abs(Math.round(this.playerSpeed));
+      this.hudSpeed.textContent = `${Math.round(this.playerSpeed)}`;
     }
     if (this.hudPlayerHp) {
-      this.hudPlayerHp.textContent = `${Math.round(this.playerIntegrity)} / ${this.player.stats.maxIntegrity}`;
+      this.hudPlayerHp.textContent = `${Math.round(this.playerIntegrity)}`;
     }
     if (this.hudPlayerHpBar) {
-      const pct = Math.max(0, (this.playerIntegrity / this.player.stats.maxIntegrity) * 100);
-      this.hudPlayerHpBar.style.width = `${pct}%`;
+      this.hudPlayerHpBar.style.width = `${Math.max(0, this.playerIntegrity)}%`;
     }
     if (this.hudNitroBar) {
-      this.hudNitroBar.style.width = `${this.nitroFuel}%`;
+      this.hudNitroBar.style.width = `${Math.max(0, this.nitroFuel)}%`;
     }
-    if (this.hudTargetHp) {
-      this.hudTargetHp.textContent = `${Math.round(this.targetIntegrity)} / ${this.targetMaxIntegrity}`;
-    }
-    if (this.hudTargetHpBar) {
-      const pct = Math.max(0, (this.targetIntegrity / this.targetMaxIntegrity) * 100);
+    if (this.hudTargetHp && this.hudTargetHpBar) {
+      const pct = Math.max(0, Math.round((this.targetIntegrity / this.targetMaxIntegrity) * 100));
+      this.hudTargetHp.textContent = `${this.targetIntegrity} / ${this.targetMaxIntegrity}`;
       this.hudTargetHpBar.style.width = `${pct}%`;
     }
-    if (this.hudDistance) {
+    if (this.hudDistance && this.player && this.target) {
       const dist = Math.max(0, Math.round(this.targetPos.z - this.playerPos.z));
       this.hudDistance.textContent = `${dist}m`;
     }
   }
 
-  showAnnouncement(msg) {
-    if (!this.hudMessage) return;
-    this.hudMessage.textContent = msg;
-    this.hudMessage.classList.add('visible');
-    clearTimeout(this.announceTimer);
-    this.announceTimer = setTimeout(() => {
-      this.hudMessage.classList.remove('visible');
-    }, 2800);
-  }
-
   // --- 勝敗判定 ---
   checkWinLoss() {
-    // 勝利条件：大型トラックの耐久度を0にして完全破壊・停止
-    if (this.targetIntegrity <= 0 && this.state === 'PLAYING') {
-      this.state = 'WON';
-      soundEngine.playExplosion();
-      this.cameraShake = 2.0;
-      this.physics.createImpactExplosion(this.targetPos, new THREE.Vector3(0, 0, 0), 4.0);
-
-      // トラック大横転演出
-      if (this.target.root) {
-        this.target.root.rotation.z = Math.PI * 0.48;
-        this.target.root.position.y = 0.5;
-      }
-
-      this.showAnnouncement('🎉 MISSION ACCOMPLISHED: TARGET DESTROYED & HALTED!');
-      setTimeout(() => {
-        document.getElementById('result-screen').classList.remove('hidden');
-        document.getElementById('result-title').textContent = 'MISSION ACCOMPLISHED';
-        document.getElementById('result-title').style.color = '#00ff88';
-        document.getElementById('result-score').textContent = `TOTAL SCORE: ${this.totalScore} PTS`;
-        document.getElementById('result-desc').textContent = '大型暴走車両の物理破壊・完全強制停止に成功しました。捜査本部は貴殿の武功を称賛します。';
-      }, 1500);
+    // 勝利：標的の耐久値がゼロ
+    if (this.targetIntegrity <= 0) {
+      this.endGame(true);
+      return;
     }
+    // 敗北：自車の耐久値がゼロ
+    if (this.playerIntegrity <= 0) {
+      this.endGame(false, 'INTERCEPTOR TOTALED (自車大破)');
+      return;
+    }
+    // 敗北：標的が遥か彼方に逃走
+    if (this.targetPos.z - this.playerPos.z > 220) {
+      this.endGame(false, 'TARGET ESCAPED BEYOND PURSUIT RANGE (標的逃走)');
+      return;
+    }
+  }
 
-    // 敗北条件：プレイヤー車両の耐久度が0で大破
-    if (this.playerIntegrity <= 0 && this.state === 'PLAYING') {
-      this.state = 'LOST';
-      soundEngine.playExplosion();
-      this.cameraShake = 2.0;
-      this.physics.createImpactExplosion(this.playerPos, new THREE.Vector3(0, 0, 0), 3.0);
-      this.showAnnouncement('💀 VEHICLE CATASTROPHIC FAILURE: DESTROYED');
-      setTimeout(() => {
-        document.getElementById('result-screen').classList.remove('hidden');
-        document.getElementById('result-title').textContent = 'MISSION FAILED';
-        document.getElementById('result-title').style.color = '#ff0055';
-        document.getElementById('result-score').textContent = `TOTAL SCORE: ${this.totalScore} PTS`;
-        document.getElementById('result-desc').textContent = '捜査車両が限界を超えて大破しました。暴走トラックは逃走中です。';
-      }, 1500);
+  endGame(isWin, reason = '') {
+    this.state = isWin ? 'WON' : 'LOST';
+    soundEngine.stopBGM();
+    soundEngine.stopSiren();
+
+    const resultScreen = document.getElementById('result-screen');
+    const resultTitle = document.getElementById('result-title');
+    const resultMsg = document.getElementById('result-message');
+    const resultScore = document.getElementById('result-score');
+
+    if (resultScreen) {
+      resultScreen.classList.remove('hidden');
+      if (isWin) {
+        resultTitle.textContent = 'MISSION ACCOMPLISHED';
+        resultTitle.style.color = '#00ff88';
+        resultMsg.textContent = 'RAMPAGING TARGET COMPLETELY NEUTRALIZED AND HALTED!';
+        soundEngine.playNitro();
+      } else {
+        resultTitle.textContent = 'MISSION FAILED';
+        resultTitle.style.color = '#ff0055';
+        resultMsg.textContent = reason || 'OPERATION ABORTED';
+        soundEngine.playCrash(1.5);
+      }
+      if (resultScore) {
+        resultScore.textContent = `${this.totalScore} PTS`;
+      }
+    }
+  }
+
+  showAnnouncement(msg) {
+    if (this.hudMessage) {
+      this.hudMessage.textContent = msg;
+      this.hudMessage.classList.add('flash');
+      setTimeout(() => this.hudMessage.classList.remove('flash'), 800);
     }
   }
 }

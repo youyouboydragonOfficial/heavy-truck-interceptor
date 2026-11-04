@@ -156,8 +156,7 @@ const bundleCode = `
           updateVehicleDossier(currentVehicle);
           game.updateDemoVehicle(currentVehicle);
           soundEngine.ensureContext();
-          soundEngine.playSiren();
-          setTimeout(() => soundEngine.stopSiren(), 300);
+          soundEngine.playClick();
         });
       });
 
@@ -170,6 +169,7 @@ const bundleCode = `
           currentTarget = btn.getAttribute('data-target');
           game.updateDemoTarget(currentTarget);
           soundEngine.ensureContext();
+          soundEngine.playClick();
         });
       });
 
@@ -182,6 +182,7 @@ const bundleCode = `
           currentMap = btn.getAttribute('data-map');
           game.updateDemoMap(currentMap);
           soundEngine.ensureContext();
+          soundEngine.playClick();
         });
       });
 
@@ -233,7 +234,7 @@ const bundleCode = `
       if (audioBtn) {
         audioBtn.addEventListener('click', () => {
           isMuted = !isMuted;
-          soundEngine.isMuted = isMuted;
+          soundEngine.setMute(isMuted);
           audioBtn.textContent = isMuted ? '🔇 MUTED' : '🔊 AUDIO';
           audioBtn.style.color = isMuted ? '#ff0055' : '#00f0ff';
         });

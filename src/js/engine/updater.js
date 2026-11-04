@@ -8,7 +8,7 @@ export class InAppUpdater {
   constructor() {
     this.repoOwner = 'youyouboydragonOfficial';
     this.repoName = 'heavy-truck-interceptor';
-    this.currentVersion = '1.2.0';
+    this.currentVersion = '1.3.0';
     this.modalEl = document.getElementById('updater-modal');
     this.statusTextEl = document.getElementById('updater-status');
     this.progressBarEl = document.getElementById('updater-progress-fill');
