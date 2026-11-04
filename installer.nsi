@@ -3,7 +3,7 @@
 !include "FileFunc.nsh"
 
 Name "Heavy Truck Interceptor"
-OutFile "dist\HeavyTruckInterceptor-Setup-v1.1.0.exe"
+OutFile "dist\HeavyTruckInterceptor-Setup-v1.2.0.exe"
 InstallDir "$LOCALAPPDATA\Programs\HeavyTruckInterceptor"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
@@ -46,7 +46,7 @@ Section "Install"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\HeavyTruckInterceptor" "UninstallString" '"$INSTDIR\Uninstall.exe"'
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\HeavyTruckInterceptor" "DisplayIcon" '"$INSTDIR\HeavyTruckInterceptor.exe"'
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\HeavyTruckInterceptor" "Publisher" "youyouboydragonOfficial"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\HeavyTruckInterceptor" "DisplayVersion" "1.1.0"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\HeavyTruckInterceptor" "DisplayVersion" "1.2.0"
 SectionEnd
 
 Section "Uninstall"

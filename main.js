@@ -19,13 +19,24 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       enableWebSQL: false,
-      webgl: true
+      webgl: true,
+      webSecurity: false,
+      allowRunningInsecureContent: true
     },
     autoHideMenuBar: true,
     show: false
   });
 
   mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
+
+  const logFile = path.join(app.getPath('userData'), 'renderer_debug.log');
+  fs.writeFileSync(logFile, `=== START LOG ${new Date().toISOString()} ===\n`);
+
+  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    const lineStr = `[${level}] ${message} (${sourceId}:${line})\n`;
+    fs.appendFileSync(logFile, lineStr);
+    console.log(lineStr);
+  });
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();

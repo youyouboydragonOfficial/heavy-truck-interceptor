@@ -179,20 +179,22 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: stretch;
-  padding: 76px 24px 20px 24px;
-  gap: 20px;
+  padding: 68px 18px 16px 18px;
+  gap: 16px;
 }
 
 /* 左パネル：車両ドシエ（スペック＆選択） */
 .menu-dossier-panel {
   pointer-events: auto;
-  width: 380px;
-  max-width: 35vw;
+  width: 340px;
+  max-width: 33vw;
   display: flex;
   flex-direction: column;
-  padding: 20px;
-  gap: 16px;
+  padding: 12px 14px;
+  gap: 8px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 240, 255, 0.4) transparent;
 }
 
 .panel-header-title {
@@ -366,13 +368,15 @@ body {
 /* 右パネル：ターゲット＆マップ設定 */
 .menu-mission-panel {
   pointer-events: auto;
-  width: 360px;
-  max-width: 35vw;
+  width: 330px;
+  max-width: 33vw;
   display: flex;
   flex-direction: column;
-  padding: 20px;
-  gap: 16px;
+  padding: 12px 14px;
+  gap: 8px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 0, 85, 0.4) transparent;
 }
 
 /* ターゲット選択グリッド */
@@ -475,15 +479,15 @@ body {
 /* 下部中央：出動アクションバー */
 .menu-center-action {
   position: absolute;
-  bottom: 24px;
+  bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
   pointer-events: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  z-index: 25;
+  gap: 6px;
+  z-index: 30;
 }
 
 /* 巨大出動ボタン */
@@ -492,19 +496,19 @@ body {
   border: 2px solid #fff;
   color: #fff;
   font-family: 'Orbitron', sans-serif;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 900;
-  padding: 16px 54px;
+  padding: 12px 42px;
   border-radius: 6px;
   cursor: pointer;
   letter-spacing: 2px;
-  box-shadow: 0 0 30px rgba(255, 0, 85, 0.6), inset 0 0 15px rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 32px rgba(255, 0, 85, 0.7), inset 0 0 15px rgba(255, 255, 255, 0.35);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
-  animation: deployPulse 2s infinite ease-in-out;
+  animation: deployPulse 1.8s infinite ease-in-out;
 }
 
 @keyframes deployPulse {
